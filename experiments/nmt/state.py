@@ -292,3 +292,13 @@ def prototype_phrase_lstm_state():
     state['prefix'] = 'phrase_lstm_'
 
     return state
+
+def prototype_syscomb_state():
+    state = prototype_search_state()
+
+    state['syscomb'] = True
+    state['num_systems'] = 1
+    state['joint'] = True
+    state['prefix'] = 'syscomb_'
+
+    return state

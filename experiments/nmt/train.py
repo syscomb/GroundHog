@@ -62,6 +62,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    print 'syscomb'
 
     state = getattr(experiments.nmt, args.proto)()
     if args.state:
@@ -77,7 +78,10 @@ def main():
     logger.debug("State:\n{}".format(pprint.pformat(state)))
 
     rng = numpy.random.RandomState(state['seed'])
-    enc_dec = RNNEncoderDecoder(state, rng, args.skip_init)
+    if state['syscomb']:
+        enc_dec = SystemCombination(state, rng, args.skip_init)
+    else:
+        enc_dec = RNNEncoderDecoder(state, rng, args.skip_init)
     enc_dec.build()
     lm_model = enc_dec.create_lm_model()
 
