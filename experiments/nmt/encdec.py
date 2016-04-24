@@ -1688,7 +1688,7 @@ class SystemCombination(object):
             return self.sample_fn
         logger.debug("Compile sampler")
         self.sample_fn = theano.function(
-                inputs=[self.n_samples, self.n_steps, self.T, self.sampling_x],
+                inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
                 outputs=[self.sample, self.sample_log_prob],
                 updates=self.sampling_updates,
                 name="sample_fn")
