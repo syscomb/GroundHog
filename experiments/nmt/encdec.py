@@ -1593,7 +1593,7 @@ class SystemCombination(object):
                     self.x[i][::-1],
                     self.x_mask[i][::-1],
                     use_noise=True,
-                    approx_embeddings=self.encoder.approx_embedder(self.x[::-1]),
+                    approx_embeddings=self.encoders[i].approx_embedder(self.x[::-1]),
                     return_hidden_layers=True)
             # Reverse time for backward representations.
             backward_training_c.out = backward_training_c.out[::-1]
