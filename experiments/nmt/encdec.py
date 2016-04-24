@@ -1561,6 +1561,7 @@ class SystemCombination(object):
         self.y = TT.lmatrix('y')
         self.y_mask = TT.matrix('y_mask')
         self.inputs += [self.y, self.y_mask]
+        print self.inputs
 
 
         self.encoders = []
