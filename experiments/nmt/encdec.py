@@ -1566,7 +1566,7 @@ class SystemCombination(object):
         self.encoders = []
         self.backward_encoders = []
         # Annotation for the log-likelihood computation
-        all_components = []
+        all_c_components = []
 
         for i in xrange(self.state['num_systems']):
             training_c_components = []
@@ -1602,7 +1602,7 @@ class SystemCombination(object):
                 training_c_components.append(forward_training_c)
             if self.state['backward']:
                 training_c_components.append(backward_training_c)
-            all_components.append(training_c_components)
+            all_c_components.append(training_c_components)
             self.state['c_dim'] = len(training_c_components) * self.state['dim']
 
         logger.debug("Create decoder")
@@ -1615,30 +1615,29 @@ class SystemCombination(object):
                 y=self.y, y_mask=self.y_mask)
 
         # Annotation for sampling
-        sampling_c_components = []
+        all_sampling_c_components = []
 
         logger.debug("Build sampling computation graph")
-        self.sampling_x = TT.lvector("sampling_x")
+        self.sampling_x = []
+        for i in xrange(self.state['num_systems']):
+            self.sampling_x.append(TT.lvector("sampling_x"+str(i)))
         self.n_samples = TT.lscalar("n_samples")
         self.n_steps = TT.lscalar("n_steps")
         self.T = TT.scalar("T")
-        self.forward_sampling_c = self.encoder.build_encoder(
-                self.sampling_x,
-                return_hidden_layers=True).out
-        self.backward_sampling_c = self.backward_encoder.build_encoder(
-                self.sampling_x[::-1],
-                approx_embeddings=self.encoder.approx_embedder(self.sampling_x[::-1]),
-                return_hidden_layers=True).out[::-1]
-        if self.state['forward']:
-            sampling_c_components.append(self.forward_sampling_c)
-        if self.state['last_forward']:
-            sampling_c_components.append(ReplicateLayer(self.sampling_x.shape[0])
-                    (self.forward_sampling_c[-1]))
-        if self.state['backward']:
-            sampling_c_components.append(self.backward_sampling_c)
-        if self.state['last_backward']:
-            sampling_c_components.append(ReplicateLayer(self.sampling_x.shape[0])
-                    (self.backward_sampling_c[0]))
+        for i in xrange(self.state['num_systems']):
+            sampling_c_components = []
+            self.forward_sampling_c = self.encoders[i].build_encoder(
+                    self.sampling_x[i],
+                    return_hidden_layers=True).out
+            self.backward_sampling_c = self.backward_encoders[i].build_encoder(
+                    self.sampling_x[i][::-1],
+                    approx_embeddings=self.encoders[i].approx_embedder(self.sampling_x[i][::-1]),
+                    return_hidden_layers=True).out[::-1]
+            if self.state['forward']:
+                sampling_c_components.append(self.forward_sampling_c)
+            if self.state['backward']:
+                sampling_c_components.append(self.backward_sampling_c)
+            all_sampling_c_components.append(sampling_c_components)
 
         self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
         (self.sample, self.sample_log_prob), self.sampling_updates =\
