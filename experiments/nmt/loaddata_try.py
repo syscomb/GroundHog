@@ -89,6 +89,7 @@ def main():
 
     logger.debug("Load data")
     train_data = get_batch_iterator(state)
+    train_data.start(-1)
     '''
     logger.debug("Compile trainer")
     algo = eval(state['algo'])(lm_model, state, train_data)
