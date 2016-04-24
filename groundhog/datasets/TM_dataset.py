@@ -172,6 +172,9 @@ class PytablesBitextFetcher(threading.Thread):
         if diter.can_fit:
             driver = "H5FD_CORE"
 
+        print diter.target_file
+        print diter.source_file
+
         target_table = tables.open_file(diter.target_file, 'r', driver=driver)
         target_data, target_index = (target_table.get_node(diter.table_name),
             target_table.get_node(diter.index_name))
