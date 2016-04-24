@@ -1604,7 +1604,7 @@ class SystemCombination(object):
                 training_c_components.append(forward_training_c)
             if self.state['backward']:
                 training_c_components.append(backward_training_c)
-            all_c_components.append(training_c_components)
+            all_c_components.append(Concatenate(axis=2)(*training_c_components).out)
             self.state['c_dim'] = len(training_c_components) * self.state['dim']
 
         logger.debug("Create decoder")
@@ -1613,7 +1613,7 @@ class SystemCombination(object):
         self.decoder.create_layers()
         logger.debug("Build log-likelihood computation graph")
         self.predictions, self.alignment = self.decoder.build_decoder(
-                c=Concatenate(axis=2)(*training_c_components), c_mask=self.x_mask[self.state['num_systems']-1],
+                c=Concatenate(axis=0)(*all_c_components), c_mask=self.x_mask[self.state['num_systems']-1],
                 y=self.y, y_mask=self.y_mask)
 
         # Annotation for sampling
@@ -1639,12 +1639,12 @@ class SystemCombination(object):
                 sampling_c_components.append(self.forward_sampling_c)
             if self.state['backward']:
                 sampling_c_components.append(self.backward_sampling_c)
-            all_sampling_c_components.append(sampling_c_components)
+            all_sampling_c_components.append(Concatenate(axis=0)(*sampling_c_components).out)
 
-        self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
+        #self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
         (self.sample, self.sample_log_prob), self.sampling_updates =\
             self.decoder.build_sampler(self.n_samples, self.n_steps, self.T,
-                    c=self.sampling_c)
+                    c=Concatenate(axis=0)(*all_sampling_c_components))
 
         logger.debug("Create auxiliary variables")
         self.c = TT.matrix("c")
