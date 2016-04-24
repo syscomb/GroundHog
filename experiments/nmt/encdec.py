@@ -1331,6 +1331,7 @@ class RNNEncoderDecoder(object):
                 return_hidden_layers=True)
         # Reverse time for backward representations.
         backward_training_c.out = backward_training_c.out[::-1]
+        print forward_training_c.ndim
 
         if self.state['forward']:
             training_c_components.append(forward_training_c)
