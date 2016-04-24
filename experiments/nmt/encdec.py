@@ -1555,8 +1555,8 @@ class SystemCombination(object):
         self.x = []
         self.x_mask = []
         for i in xrange(self.state['num_systems']):
-            self.x.append(TT.lmatrix('x'))
-            self.x_mask.append(TT.matrix('x_mask'))
+            self.x.append(TT.lmatrix('x'+str(i)))
+            self.x_mask.append(TT.matrix('x_mask'+str(i)))
             self.inputs += [self.x[i], self.x_mask[i]]
         self.y = TT.lmatrix('y')
         self.y_mask = TT.matrix('y_mask')
