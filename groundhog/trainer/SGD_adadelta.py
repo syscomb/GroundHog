@@ -162,7 +162,6 @@ class SGD(object):
     def __call__(self):
         batch = self.data.next()
         assert batch
-        print batch
 
         # Perturb the data (! and the model)
         if isinstance(batch, dict):
@@ -174,7 +173,6 @@ class SGD(object):
         # each batch is copied individually on gpu
         if isinstance(batch, dict):
             for gdata in self.gdata:
-                print gdata
                 gdata.set_value(batch[gdata.name], borrow=True)
         else:
             for gdata, data in zip(self.gdata, batch):

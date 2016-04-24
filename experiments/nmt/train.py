@@ -84,7 +84,7 @@ def main():
         enc_dec = RNNEncoderDecoder(state, rng, args.skip_init)
     enc_dec.build()
     lm_model = enc_dec.create_lm_model()
-    print lm_model.inputs
+    print 'lm model inputs:', lm_model.inputs
 
     logger.debug("Load data")
     train_data = get_batch_iterator(state)
