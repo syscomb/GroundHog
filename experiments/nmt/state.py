@@ -300,5 +300,6 @@ def prototype_syscomb_state():
     state['num_systems'] = 1
     state['joint'] = True
     state['prefix'] = 'syscomb_'
+    state['split_sym'] = -1
 
     return state

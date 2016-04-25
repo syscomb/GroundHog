@@ -3,6 +3,9 @@ from encdec import get_batch_iterator
 from encdec import parse_input
 from encdec import create_padded_batch
 from encdec import SystemCombination
+from encdec import get_batch_iterator_multi
+from encdec import parse_input
+from encdec import create_padded_batch_multi
 
 from state import\
     prototype_state,\
