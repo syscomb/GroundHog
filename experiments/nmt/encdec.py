@@ -1540,11 +1540,27 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     * len(x[0][idx]) is the size of sequence idx
     """
 
+    # decide the longest sentence in the training batch
+    maxl = 0
+    eos_pos = []
+    for idx in xrange(len(x[0])):
+        last_split = -1
+        split_sym = []
+        for pos in xrange(len(x[0][idx])):
+            if x[0][idx][pos] == state['split_sym']:
+                split_sym.append(pos)
+                current_len = pos-last_split
+                last_split = pos
+                if current_len > maxl:
+                    maxl = current_len
+        eos_pos.append(split_sym)
+
+
     mx = state['seqlen']
     my = state['seqlen']
     if state['trim_batches']:
         # Similar length for all source sequences
-        mx = numpy.minimum(state['seqlen'], max([len(xx) for xx in x[0]]))+1
+        mx = numpy.minimum(state['seqlen'], maxl)+1
         # Similar length for all target sequences
         my = numpy.minimum(state['seqlen'], max([len(xx) for xx in y[0]]))+1
 
@@ -1555,6 +1571,12 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     Y = numpy.zeros((my, n), dtype='int64')
     Xmask = numpy.zeros((mx, n), dtype='float32')
     Ymask = numpy.zeros((my, n), dtype='float32')
+
+    xs = []
+    xsmask = []
+    for i in xrange(state['num_systems']):
+        xs.append(numpy.zeros((mx, n), dtype='int64'))
+        xsmask.append(numpy.zeros((mx, n), dtype='float32'))
 
     # Fill X and Xmask
     for idx in xrange(len(x[0])):

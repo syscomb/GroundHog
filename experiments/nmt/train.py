@@ -87,7 +87,7 @@ def main():
     print 'lm model inputs:', lm_model.inputs
 
     logger.debug("Load data")
-    train_data = get_batch_iterator(state)
+    train_data = get_batch_iterator_multi(state)
     logger.debug("Compile trainer")
     algo = eval(state['algo'])(lm_model, state, train_data)
     logger.debug("Run training")
