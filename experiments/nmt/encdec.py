@@ -1650,27 +1650,41 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         for i in xrange(state['num_systems']):
             if numpy.sum(xsmask[i][:,idx]) != 0:
                 null_inputs[idx] = 0
+        '''
         if Xmask[-1,idx] and X[-1,idx] != state['null_sym_source']:
             null_inputs[idx] = 1
+        '''
+        for i in xrange(state['num_systems']):
+            if xsmask[i][-1, idx] and xs[i][-1, idx] != state['null_sym_source']:
+                null_inputs[idx] = 1
         if Ymask[-1,idx] and Y[-1,idx] != state['null_sym_target']:
             null_inputs[idx] = 1
 
     valid_inputs = 1. - null_inputs
 
     # Leave only valid inputs
-    X = X[:,valid_inputs.nonzero()[0]]
+    #X = X[:,valid_inputs.nonzero()[0]]
     Y = Y[:,valid_inputs.nonzero()[0]]
-    Xmask = Xmask[:,valid_inputs.nonzero()[0]]
+    #Xmask = Xmask[:,valid_inputs.nonzero()[0]]
     Ymask = Ymask[:,valid_inputs.nonzero()[0]]
+    for i in xrange(state['num_systems']):
+        xs[i] = xs[i][:,valid_inputs.nonzero()[0]]
+        xsmask[i] = xsmask[i][:,valid_inputs.nonzero()[0]]
     if len(valid_inputs.nonzero()[0]) <= 0:
         return None
 
     # Unknown words
-    X[X >= state['n_sym_source']] = state['unk_sym_source']
+    #X[X >= state['n_sym_source']] = state['unk_sym_source']
+    for i in xrange(state['num_systems']):
+        xs[i][xs[i] >= state['n_sym_source']] = state['unk_sym_source']
     Y[Y >= state['n_sym_target']] = state['unk_sym_target']
 
+    returndict = {'y': Y, 'y_mask' : Ymask}
+    for i in xrange(state['num_systems']):
+        returndict['x'+str(i)] = xs[i]
+        returndict['x_mask'+str(i)] = xsmask[i]
     if return_dict:
-        return {'x' : X, 'x_mask' : Xmask, 'y': Y, 'y_mask' : Ymask}
+        return returndict
     else:
         return X, Xmask, Y, Ymask
 
