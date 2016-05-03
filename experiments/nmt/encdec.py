@@ -1614,7 +1614,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
                 xs[i][:lengths[i][idx], idx] = x[0][idx][start:start+lengths[i][idx]]
 
             if lengths[i][idx] < mx[i]:
-                xs[lengths[i][idx]:, idx] = state['null_sym_source']
+                xs[i][lengths[i][idx]:, idx] = state['null_sym_source']
 
             xsmask[i][:lengths[i][idx], idx] = 1.
             if lengths[i][idx] < mx[i]:
