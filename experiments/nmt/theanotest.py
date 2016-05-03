@@ -52,3 +52,13 @@ fc1v = numpy.asarray([[1.1,1.1,1.1],[1.3,1.3,1.3]], dtype=theano.config.floatX)
 bc1v = numpy.asarray([[1.5,1.5,1.5],[1.7,1.8,1.8]], dtype=theano.config.floatX)
 
 print func(fc0v,bc0v,fc1v,bc1v)
+
+mask0 = TT.matrix()
+mask1 = TT.matrix()
+
+cm = Concatenate(axis=0)(*[mask0,mask1]).out
+
+func = theano.function(inputs=[mask0, mask1], outputs=[cm])
+
+mask0v = numpy.asarray([[1.,1.,1.],[1.,0.,0.],[1.,1.,0.]], dtype=theano.config.floatX)
+mask1v = numpy.asarray([[1.,1.,1.],[1.,0.,0.],[1.,1.,0.]], dtype=theano.config.floatX)

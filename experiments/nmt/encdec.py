@@ -1841,7 +1841,7 @@ class SystemCombination(object):
         self.decoder.create_layers()
         logger.debug("Build log-likelihood computation graph")
         self.predictions, self.alignment = self.decoder.build_decoder(
-                c=Concatenate(axis=0)(*all_c_components), c_mask=self.x_mask[self.state['num_systems']-1],
+                c=Concatenate(axis=0)(*all_c_components), c_mask=Concatenate(axis=0)(*self.x_mask),
                 y=self.y, y_mask=self.y_mask)
 
         # Annotation for sampling
@@ -1895,6 +1895,15 @@ class SystemCombination(object):
         logger.debug("Model params:\n{}".format(
             pprint.pformat(sorted([p.name for p in self.lm_model.params]))))
         return self.lm_model
+    '''
+    def test_computer(self):
+        if not hasattr(self, "test_fn"):
+            self.test_fn = theano.function(
+                    inputs=[self.],
+                    outputs=[self.sampling_c],
+                    name="repr_fn")
+        return self.test_fn
+    '''
 
     def create_representation_computer(self):
         if not hasattr(self, "repr_fn"):
