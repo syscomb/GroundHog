@@ -56,7 +56,7 @@ print func(fc0v,bc0v,fc1v,bc1v)
 mask0 = TT.matrix()
 mask1 = TT.matrix()
 
-cm = Concatenate(axis=0)(*[mask0,mask1]).out
+cm = Concatenate(axis=1)(*[mask0,mask1]).out
 
 func = theano.function(inputs=[mask0, mask1], outputs=[cm])
 
