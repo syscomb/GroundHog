@@ -1561,29 +1561,33 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     print maxl
     print lengths
 
-    mx = state['seqlen']
+    #mx = state['seqlen']
+    mx = [state['seqlen']]*state['num_systems']
     my = state['seqlen']
     if state['trim_batches']:
         # Similar length for all source sequences
-        mx = numpy.minimum(state['seqlen'], maxl)+1
+        #mx = numpy.minimum(state['seqlen'], maxl)+1
         # Similar length for all target sequences
+        for i in xrange(state['num_systems']):
+            mx[i] = numpy.minimum(state['seqlen'], maxl[i])+1
         my = numpy.minimum(state['seqlen'], max([len(xx) for xx in y[0]]))+1
 
     # Batch size
     n = x[0].shape[0]
 
-    X = numpy.zeros((mx, n), dtype='int64')
+    #X = numpy.zeros((mx, n), dtype='int64')
     Y = numpy.zeros((my, n), dtype='int64')
-    Xmask = numpy.zeros((mx, n), dtype='float32')
+    #Xmask = numpy.zeros((mx, n), dtype='float32')
     Ymask = numpy.zeros((my, n), dtype='float32')
 
     xs = []
     xsmask = []
     for i in xrange(state['num_systems']):
-        xs.append(numpy.zeros((mx, n), dtype='int64'))
-        xsmask.append(numpy.zeros((mx, n), dtype='float32'))
+        xs.append(numpy.zeros((mx[i], n), dtype='int64'))
+        xsmask.append(numpy.zeros((mx[i], n), dtype='float32'))
 
     # Fill X and Xmask
+    '''
     for idx in xrange(len(x[0])):
         # Insert sequence idx in a column of matrix X
         if mx < len(x[0][idx]):
@@ -1600,6 +1604,25 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         Xmask[:len(x[0][idx]), idx] = 1.
         if len(x[0][idx]) < mx:
             Xmask[len(x[0][idx]), idx] = 1.
+    '''
+    for idx in xrange(len(x[0])):
+        start = 0
+        for i in xrange(state['num_systems']):
+            if mx[i] < lengths[i][idx]:
+                xs[i][:mx[i], idx] = x[0][idx][start:start+mx]
+            else:
+                xs[i][:lengths[i][idx], idx] = x[0][idx][start:start+lengths[i][idx]]
+
+            if lengths[i][idx] < mx[i]:
+                xs[lengths[i][idx]:, idx] = state['null_sym_source']
+
+            xsmask[i][:lengths[i][idx], idx] = 1.
+            if lengths[i][idx] < mx[i]:
+                xsmask[i][lengths[i][idx], idx] = 1.
+
+            start += lengths[i][idx]+1
+
+
 
     # Fill Y and Ymask in the same way as X and Xmask in the previous loop
     for idx in xrange(len(y[0])):
@@ -1609,6 +1632,10 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         Ymask[:len(y[0][idx]), idx] = 1.
         if len(y[0][idx]) < my:
             Ymask[len(y[0][idx]), idx] = 1.
+
+    for i in state['num_systems']:
+        print xs[i]
+    print Y
 
     null_inputs = numpy.zeros(X.shape[1])
 
