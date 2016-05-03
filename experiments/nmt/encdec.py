@@ -1557,6 +1557,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
                     maxl[num_system] = current_len
                 num_system += 1
 
+    print x
     print maxl
     print lengths
 
