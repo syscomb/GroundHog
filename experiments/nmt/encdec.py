@@ -1543,7 +1543,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     # decide the length of each sentence in the input
     maxl = [0]*state['num_systems']
     lengths = []
-    for i in state['num_systems']:
+    for i in xrange(state['num_systems']):
         lengths.append([])
     for idx in xrange(len(x[0])):
         last_split = -0
