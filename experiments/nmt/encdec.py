@@ -1841,7 +1841,7 @@ class SystemCombination(object):
         self.decoder.create_layers()
         logger.debug("Build log-likelihood computation graph")
         self.predictions, self.alignment = self.decoder.build_decoder(
-                c=Concatenate(axis=0)(*all_c_components), c_mask=Concatenate(axis=1)(*self.x_mask),
+                c=Concatenate(axis=0)(*all_c_components), c_mask=Concatenate(axis=0)(*self.x_mask),
                 y=self.y, y_mask=self.y_mask)
 
         # Annotation for sampling
