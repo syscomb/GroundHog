@@ -1540,21 +1540,25 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     * len(x[0][idx]) is the size of sequence idx
     """
 
-    # decide the longest sentence in the training batch
-    maxl = 0
-    eos_pos = []
+    # decide the length of each sentence in the input
+    maxl = [0]*state['num_systems']
+    lengths = []
+    for i in state['num_systems']:
+        lengths.append([])
     for idx in xrange(len(x[0])):
-        last_split = -1
-        split_sym = []
+        last_split = -0
+        num_system = 0
         for pos in xrange(len(x[0][idx])):
             if x[0][idx][pos] == state['split_sym']:
-                split_sym.append(pos)
-                current_len = pos-last_split
+                current_len = pos - last_split
+                lengths[num_system].append(current_len)
                 last_split = pos
-                if current_len > maxl:
-                    maxl = current_len
-        eos_pos.append(split_sym)
+                if current_len > maxl[num_system]:
+                    maxl[num_system] = current_len
+                num_system += 1
 
+    print maxl
+    print lengths
 
     mx = state['seqlen']
     my = state['seqlen']
