@@ -1552,7 +1552,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
             if x[0][idx][pos] == state['split_sym']:
                 current_len = pos - last_split
                 lengths[num_system].append(current_len)
-                last_split = pos
+                last_split = pos+1
                 if current_len > maxl[num_system]:
                     maxl[num_system] = current_len
                 num_system += 1
@@ -1637,13 +1637,13 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         print xs[i]
     print Y
 
-    null_inputs = numpy.zeros(X.shape[1])
+    null_inputs = numpy.zeros(Y.shape[1])
 
     # We say that an input pair is valid if both:
     # - either source sequence or target sequence is non-empty
     # - source sequence and target sequence have null_sym ending
     # Why did not we filter them earlier?
-    for idx in xrange(X.shape[1]):
+    for idx in xrange(Y.shape[1]):
         if numpy.sum(Xmask[:,idx]) == 0 and numpy.sum(Ymask[:,idx]) == 0:
             null_inputs[idx] = 1
         if Xmask[-1,idx] and X[-1,idx] != state['null_sym_source']:
