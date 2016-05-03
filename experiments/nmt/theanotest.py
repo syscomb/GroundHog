@@ -62,3 +62,5 @@ func = theano.function(inputs=[mask0, mask1], outputs=[cm])
 
 mask0v = numpy.asarray([[1.,1.,1.],[1.,0.,0.],[1.,1.,0.]], dtype=theano.config.floatX)
 mask1v = numpy.asarray([[1.,1.,1.],[1.,0.,0.],[1.,1.,0.]], dtype=theano.config.floatX)
+
+print func(mask0v,mask1v)
