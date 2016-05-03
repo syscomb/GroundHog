@@ -1633,7 +1633,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         if len(y[0][idx]) < my:
             Ymask[len(y[0][idx]), idx] = 1.
 
-    for i in state['num_systems']:
+    for i in xrange(state['num_systems']):
         print xs[i]
     print Y
 
@@ -1644,8 +1644,12 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     # - source sequence and target sequence have null_sym ending
     # Why did not we filter them earlier?
     for idx in xrange(Y.shape[1]):
-        if numpy.sum(Xmask[:,idx]) == 0 and numpy.sum(Ymask[:,idx]) == 0:
-            null_inputs[idx] = 1
+        null_inputs[idx] = 1
+        if numpy.sum(Ymask[:,idx]) != 0:
+            null_inputs[idx] = 0
+        for i in xrange(state['num_systems']):
+            if numpy.sum(xsmask[i][:,idx]) != 0:
+                null_inputs[idx] = 0
         if Xmask[-1,idx] and X[-1,idx] != state['null_sym_source']:
             null_inputs[idx] = 1
         if Ymask[-1,idx] and Y[-1,idx] != state['null_sym_target']:
