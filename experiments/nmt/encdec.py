@@ -2214,7 +2214,7 @@ class Decoder_joint(EncoderDecoderBase):
                 TT.zeros(shape=(n_samples,), dtype='float32')]
         init_cs = []
         for i in xrange(self.state['num_systems']):
-            init_cs.append(self.initers[i](c[i][0, -self.state['dim']:]))
+            init_cs.append(self.initers[i](c[i][0, -self.state['dim']:]).out)
         init_c = init_cs[0]
         for i in range(1,self.state['num_systems']):
             init_c += init_cs[i]
@@ -2227,6 +2227,7 @@ class Decoder_joint(EncoderDecoderBase):
         if not self.state['search']:
             c = PadLayer(n_steps)(c).out
         '''
+        print len(states)
         print len(c)
         # Pad with final states
         non_sequences = [c, T]
