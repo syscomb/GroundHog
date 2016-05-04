@@ -1783,7 +1783,7 @@ class Decoder_joint(EncoderDecoderBase):
         #self._create_initialization_layers()
         self._create_decoding_layers()
         self._create_readout_layers()
-        self.create_init_layers
+        self.create_init_layers()
 
         if self.state['search']:
             assert self.num_levels == 1
