@@ -2195,6 +2195,7 @@ class Decoder_joint(EncoderDecoderBase):
 
         # Arguments that correspond to scan's "non_sequences":
         c = next(args)
+        print len(c)
         assert c[0].ndim == 2
         T = next(args)
         assert T.ndim == 0
@@ -2221,9 +2222,12 @@ class Decoder_joint(EncoderDecoderBase):
         #init_c = c[0, -self.state['dim']:]
         states += [ReplicateLayer(n_samples)(init(init_c).out).out for init in self.initializers]
 
+        assert self.state['search']
+        '''
         if not self.state['search']:
             c = PadLayer(n_steps)(c).out
-
+        '''
+        
         # Pad with final states
         non_sequences = [c, T]
 
