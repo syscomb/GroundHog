@@ -2227,7 +2227,7 @@ class Decoder_joint(EncoderDecoderBase):
         if not self.state['search']:
             c = PadLayer(n_steps)(c).out
         '''
-        
+        print len(c)
         # Pad with final states
         non_sequences = [c, T]
 
