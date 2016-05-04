@@ -2202,6 +2202,7 @@ class Decoder_joint(EncoderDecoderBase):
         #print len(c)
         assert c[0].ndim == 2
         T = next(args)
+        print T
         assert T.ndim == 0
 
         decoder_args = dict(given_init_states=prev_hidden_states, T=T, c=c)
