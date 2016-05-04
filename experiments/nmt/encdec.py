@@ -1998,7 +1998,7 @@ class Decoder_joint(EncoderDecoderBase):
             for level in range(self.num_levels):
                 init_cs = []
                 for i in xrange(self.state['num_systems']):
-                    init_cs.append(self.initers(c[i][0, :, -self.state['dim']:]))
+                    init_cs.append(self.initers[i](c[i][0, :, -self.state['dim']:]))
                 init_c = init_cs[0]
                 for i in range(1,self.state['num_systems']):
                     init_c += init_cs[i]
