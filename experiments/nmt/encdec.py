@@ -1560,9 +1560,10 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
                     maxl[num_system] = current_len
                 num_system += 1
 
-    print x
-    print maxl
-    print lengths
+    #print 'x and lengths'
+    #print x
+    #print maxl
+    #print lengths
 
     #mx = state['seqlen']
     mx = [state['seqlen']]*state['num_systems']
@@ -1636,9 +1637,9 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         if len(y[0][idx]) < my:
             Ymask[len(y[0][idx]), idx] = 1.
 
-    for i in xrange(state['num_systems']):
-        print xs[i]
-    print Y
+    #for i in xrange(state['num_systems']):
+    #    print xs[i]
+    #print Y
 
     null_inputs = numpy.zeros(Y.shape[1])
 
@@ -1674,6 +1675,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         xs[i] = xs[i][:,valid_inputs.nonzero()[0]]
         xsmask[i] = xsmask[i][:,valid_inputs.nonzero()[0]]
     if len(valid_inputs.nonzero()[0]) <= 0:
+        print 'no valid'
         return None
 
     # Unknown words
@@ -1686,6 +1688,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     for i in xrange(state['num_systems']):
         returndict['x'+str(i)] = xs[i]
         returndict['x_mask'+str(i)] = xsmask[i]
+    #print returndict
     if return_dict:
         return returndict
     else:
@@ -1744,8 +1747,212 @@ def get_batch_iterator_multi(state):
         queue_size=1000,
         shuffle=state['shuffle'],
         use_infinite_loop=state['use_infinite_loop'],
-        max_len=state['seqlen'])
+        max_len=state['num_systems']*state['seqlen'])
     return train_data
+
+class MultiInputLayer(Layer):
+    """
+    Implementing a standard feed forward MLP for multi inputs
+    """
+    def __init__(self,
+                 rng,
+                 n_in,
+                 n_hids=[500,500],
+                 activation='TT.tanh',
+                 scale=0.01,
+                 sparsity=-1,
+                 rank_n_approx=0,
+                 rank_n_activ='lambda x: x',
+                 weight_noise=False,
+                 dropout = 1.,
+                 init_fn='sample_weights_classic',
+                 bias_fn='init_bias',
+                 bias_scale = 0.,
+                 learn_bias = True,
+                 grad_scale = 1.,
+                 name=None,
+                 num_inputs=1):
+        """
+        :type rng: numpy random generator
+        :param rng: numpy random generator
+
+        :type n_in: int
+        :param n_in: number of inputs units
+
+        :type n_hids: list of ints
+        :param n_hids: Number of hidden units on each layer of the MLP
+
+        :type activation: string/function or list of
+        :param activation: Activation function for the embedding layers. If
+            a list it needs to have a value for each layer. If not, the same
+            activation will be applied to all layers
+
+        :type scale: float or list of
+        :param scale: depending on the initialization function, it can be
+            the standard deviation of the Gaussian from which the weights
+            are sampled or the largest singular value. If a single value it
+            will be used for each layer, otherwise it has to have one value
+            for each layer
+
+        :type sparsity: int or list of
+        :param sparsity: if a single value, it will be used for each layer,
+            otherwise it has to be a list with as many values as layers. If
+            negative, it means the weight matrix is dense. Otherwise it
+            means this many randomly selected input units are connected to
+            an output unit
+
+        :type rank_n_approx: int
+        :param rank_n_approx: It applies to the first layer only. If
+            positive and larger than 0, the first weight matrix is
+            factorized into two matrices. The first one goes from input to
+            `rank_n_approx` hidden units, the second from `rank_n_approx` to
+            the number of units on the second layer
+
+        :type rank_n_activ: string or function
+        :param rank_n_activ: Function that is applied on on the intermediary
+            layer formed from factorizing the first weight matrix (Q: do we
+            need this?)
+
+        :type weight_noise: bool
+        :param weight_noise: If true, the model is used with weight noise
+            (and the right shared variable are constructed, to keep track of the
+            noise)
+
+        :type dropout: float
+        :param dropout: the probability with which hidden units are dropped
+            from the hidden layer. If set to 1, dropout is not used
+
+        :type init_fn: string or function
+        :param init_fn: function used to initialize the weights of the
+            layer. We recommend using either `sample_weights_classic` or
+            `sample_weights` defined in the utils
+
+        :type bias_fn: string or function
+        :param bias_fn: function used to initialize the biases. We recommend
+            using `init_bias` defined in the utils
+
+        :type bias_scale: float
+        :param bias_scale: argument passed to `bias_fn`, depicting the scale
+            of the initial bias
+
+        :type learn_bias: bool
+        :param learn_bias: flag, saying if we should learn the bias or keep
+            it constant
+
+
+        :type grad_scale: float or theano scalar
+        :param grad_scale: factor with which the gradients with respect to
+            the parameters of this layer are scaled. It is used for
+            differentiating between the different parameters of a model.
+
+        :type name: string
+        :param name: name of the layer (used to name parameters). NB: in
+            this library names are very important because certain parts of the
+            code relies on name to disambiguate between variables, therefore
+            each layer should have a unique name.
+        """
+
+        assert rank_n_approx >= 0, "Please enter a valid rank_n_approx"
+        self.rank_n_approx = rank_n_approx
+
+        if isinstance(rank_n_activ,  (str, unicode)):
+            rank_n_activ = eval(rank_n_activ)
+        self.rank_n_activ = rank_n_activ
+        if type(n_hids) not in (list, tuple):
+            n_hids = [n_hids]
+        n_layers = len(n_hids)
+        self.n_layers = n_layers
+        if type(scale) not in (list, tuple):
+            scale = [scale] * n_layers
+        if type(sparsity) not in (list, tuple):
+            sparsity = [sparsity] * n_layers
+        for idx, sp in enumerate(sparsity):
+            if sp < 0: sparsity[idx] = n_hids[idx]
+        if type(activation) not in (list, tuple):
+            activation = [activation] * n_layers
+        if type(bias_scale) not in (list, tuple):
+            bias_scale = [bias_scale] * n_layers
+        if bias_fn not in (list, tuple):
+            bias_fn = [bias_fn] * n_layers
+        if init_fn not in (list, tuple):
+            init_fn = [init_fn] * n_layers
+
+        for dx in xrange(n_layers):
+            if isinstance(bias_fn[dx],  (str, unicode)):
+                bias_fn[dx] = eval(bias_fn[dx])
+            if isinstance(init_fn[dx], (str, unicode)):
+                init_fn[dx] = eval(init_fn[dx])
+            if isinstance(activation[dx], (str, unicode)):
+                activation[dx] = eval(activation[dx])
+        super(MultiInputLayer, self).__init__(n_in, n_hids[-1], rng, name)
+        self.trng = RandomStreams(self.rng.randint(int(1e6)))
+        self.activation = activation
+        self.scale = scale
+        self.sparsity = sparsity
+        self.bias_scale = bias_scale
+        self.bias_fn = bias_fn
+        self.init_fn = init_fn
+        self._grad_scale = grad_scale
+        self.weight_noise = weight_noise
+        self.dropout = dropout
+        self.n_hids = n_hids
+        self.learn_bias = learn_bias
+        self.num_inputs = num_inputs
+        self._init_params()
+
+    def _init_params(self):
+        """
+        Initialize the parameters of the layer, either by using sparse initialization or small
+        isotropic noise.
+        """
+        self.W_ems = []
+        self.b_ems = []
+        
+        for i in xrange(self.num_inputs):
+            W_em = self.init_fn[0](self.n_in,
+                                self.n_hids[0],
+                                self.sparsity[0],
+                                self.scale[0],
+                                self.rng)
+            self.W_em = theano.shared(W_em,
+                                      name='W_'+str(i)+'_%s'%self.name)
+            self.W_ems += [self.W_em]
+
+        self.b_em = theano.shared(
+            self.bias_fn[0](self.n_hids[0], self.bias_scale[0],self.rng),
+            name='b_0_%s'%self.name)
+        self.b_ems = [self.b_em]
+
+        self.params = [x for x in self.W_ems]
+
+        if self.learn_bias and self.learn_bias!='last':
+            self.params = [x for x in self.W_ems] + [x for x in self.b_ems]
+        elif self.learn_bias == 'last':
+            self.params = [x for x in self.W_ems] + [x for x in
+                                                     self.b_ems][:-1]
+        self.params_grad_scale = [self._grad_scale for x in self.params]
+        if self.weight_noise:
+            self.nW_ems = [theano.shared(x.get_value()*0, name='noise_'+x.name) for x in self.W_ems]
+            self.nb_ems = [theano.shared(x.get_value()*0, name='noise_'+x.name) for x in self.b_ems]
+
+            self.noise_params = [x for x in self.nW_ems] + [x for x in self.nb_ems]
+            self.noise_params_shape_fn = [constant_shape(x.get_value().shape)
+                            for x in self.noise_params]
+
+
+    def fprop(self, list_inputs, use_noise=True, no_noise_bias=False,
+            first_only = False):
+        """
+        Constructs the computational graph of this layer.
+        If the input is ints, we assume is an index, otherwise we assume is
+        a set of floats.
+        """
+        result = TT.dot(list_inputs[0] ,self.W_ems[0])
+        for i in range(1,self.num_inputs):
+            result += TT.dot(list_inputs[i] ,self.W_ems[i])
+        result += self.b_ems[0]
+        self.out = self.activation[0](result)
+        return self.activation[0](result)
 
 class Decoder_joint(EncoderDecoderBase):
 
@@ -1794,7 +2001,16 @@ class Decoder_joint(EncoderDecoderBase):
 
     def create_init_layers(self):
         logger.debug("create_init_layers")
-        self.initers = []
+        self.initer = MultiInputLayer(
+                self.rng,
+                n_in = self.state['dim'],
+                n_hids = self.state['dim'] * self.state['hid_mult'],
+                activation = prefix_lookup(self.state, 'dec', 'activ'),
+                bias_scale = self.state['bias'],
+                name = '{}_initer'.format(self.prefix),
+                num_inputs = self.state['num_systems'],
+                **self.default_kwargs)
+        '''
         for i in xrange(self.state['num_systems']):
             self.initers.append(MultiLayer(
                 self.rng,
@@ -1804,6 +2020,7 @@ class Decoder_joint(EncoderDecoderBase):
                 bias_scale = self.state['bias'],
                 name = '{}_initer_{}'.format(self.prefix, i),
                 **self.default_kwargs))
+        '''
 
     def _create_initialization_layers(self):
         logger.debug("_create_initialization_layers")
@@ -1998,14 +2215,18 @@ class Decoder_joint(EncoderDecoderBase):
             for level in range(self.num_levels):
                 init_cs = []
                 for i in xrange(self.state['num_systems']):
-                    init_cs.append(self.initers[i](c[i][0, :, -self.state['dim']:]))
-                init_c = init_cs[0]
-                for i in range(1,self.state['num_systems']):
-                    init_c += init_cs[i]
+                    init_cs.append(c[i][0, :, -self.state['dim']:])
                 #init_states.append(init_c)
-                init_states.append(self.initializers[level](init_c))
+                init_states.append(self.initer(init_cs))
 
-        c = Concatenate(axis=0)(*c)
+        #if mode == Decoder.SAMPLING:
+        #    for i in xrange(self.state['num_systems']):
+        #        c[i] = c[i].dimshuffle(1,0,2)
+        if mode != Decoder.SAMPLING:
+            c = Concatenate(axis=0)(*c)
+        else:
+            #c = Concatenate(axis=1)(*c).out
+            print 'sampling_cndim',c.ndim
         if c_mask:
             c_mask=Concatenate(axis=0)(*c_mask)
         # Low rank embeddings of all the input words.
@@ -2193,21 +2414,21 @@ class Decoder_joint(EncoderDecoderBase):
         prev_hidden_states = [next(args) for k in range(self.num_levels)]
         assert prev_hidden_states[0].ndim == 2
 
-        print step_num
-        print prev_word
-        print prev_hidden_states
+        print 'step_num:',step_num
+        print 'prev_word:',prev_word
+        print 'prev_hidden_states:',prev_hidden_states
         # Arguments that correspond to scan's "non_sequences":
         c = next(args)
         truec = []
         #print len(c)
-        for i in xrange(self.state['num_systems']):
-            truec.append(c[i])
-        assert c[0].ndim == 2
+        #for i in xrange(self.state['num_systems']):
+        #    truec.append(c[i])
+        assert c.ndim == 2
         T = next(args)
-        print T
+        print 'T:',T
         assert T.ndim == 0
 
-        decoder_args = dict(given_init_states=prev_hidden_states, T=T, c=truec)
+        decoder_args = dict(given_init_states=prev_hidden_states, T=T, c=c)
 
         sample, log_prob = self.build_decoder(y=prev_word, step_num=step_num, mode=Decoder.SAMPLING, **decoder_args)[:2]
         hidden_states = self.build_decoder(y=sample, step_num=step_num, mode=Decoder.SAMPLING, **decoder_args)[2:]
@@ -2221,22 +2442,17 @@ class Decoder_joint(EncoderDecoderBase):
                 TT.zeros(shape=(n_samples,), dtype='float32')]
         init_cs = []
         for i in xrange(self.state['num_systems']):
-            init_cs.append(self.initers[i](c[i][0, -self.state['dim']:]).out)
-        init_c = init_cs[0]
-        for i in range(1,self.state['num_systems']):
-            init_c += init_cs[i]
-        #c = Concatenate(axis=0)(*c)
+            init_cs.append(c[i][0, -self.state['dim']:])
+        states += [ReplicateLayer(n_samples)(self.initer(init_cs)).out]
+        c = Concatenate(axis=0)(*c)
         #init_c = c[0, -self.state['dim']:]
-        states += [ReplicateLayer(n_samples)(init(init_c).out).out for init in self.initializers]
+        #states += [ReplicateLayer(n_samples)(init(init_c).out).out for init in self.initializers]
 
         assert self.state['search']
         '''
         if not self.state['search']:
             c = PadLayer(n_steps)(c).out
         '''
-        print len(states)
-        print len(c)
-        print c[0].ndim
         # Pad with final states
         non_sequences = [c, T]
 
@@ -2762,7 +2978,7 @@ class SystemCombination(object):
         self.y = TT.lmatrix('y')
         self.y_mask = TT.matrix('y_mask')
         self.inputs += [self.y, self.y_mask]
-        print self.inputs
+        print 'inputs:',self.inputs
 
 
         self.encoders = []
@@ -2847,6 +3063,7 @@ class SystemCombination(object):
             all_sampling_c_components.append(Concatenate(axis=1)(*sampling_c_components).out)
 
         #self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
+        self.all_sampling_c_components = all_sampling_c_components
         (self.sample, self.sample_log_prob), self.sampling_updates =\
             self.decoder.build_sampler(self.n_samples, self.n_steps, self.T,
                     c=all_sampling_c_components)
@@ -2914,6 +3131,12 @@ class SystemCombination(object):
                 return map(lambda x : x.squeeze(), self.sample_fn(1, *args))
             return sampler
         return self.sample_fn
+    
+    def sample_test(self):
+        self.test_fn = theano.function(
+                inputs=[]+self.sampling_x,
+                outputs=self.all_sampling_c_components)
+        return self.test_fn
 
     def create_scorer(self, batch=False):
         if not hasattr(self, 'score_fn'):

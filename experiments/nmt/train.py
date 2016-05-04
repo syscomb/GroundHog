@@ -19,10 +19,12 @@ logger = logging.getLogger(__name__)
 
 class RandomSamplePrinter(object):
 
-    def __init__(self, state, model, train_iter):
+    def __init__(self, state, model, train_iter, enc_dec):
         args = dict(locals())
         args.pop('self')
         self.__dict__.update(**args)
+        self.state = state
+        self.enc_dec = enc_dec
 
     def __call__(self):
         def cut_eol(words):
@@ -34,20 +36,37 @@ class RandomSamplePrinter(object):
         sample_idx = 0
         while sample_idx < self.state['n_examples']:
             batch = self.train_iter.next(peek=True)
-            xs, ys = batch['x'], batch['y']
-            for seq_idx in range(xs.shape[1]):
+            #print batch
+            xs = []
+            for i in xrange(self.state['num_systems']):
+                xs.append(batch['x'+str(i)])
+            ys = batch['y']
+            for seq_idx in range(ys.shape[1]):
                 if sample_idx == self.state['n_examples']:
                     break
-
-                x, y = xs[:, seq_idx], ys[:, seq_idx]
-                x_words = cut_eol(map(lambda w_idx : self.model.word_indxs_src[w_idx], x))
+                
+                y = ys[:, seq_idx]
                 y_words = cut_eol(map(lambda w_idx : self.model.word_indxs[w_idx], y))
+                x = []
+                x_words = []
+                xpara = []
+                for i in xrange(self.state['num_systems']):
+                    x.append(xs[i][:, seq_idx])                
+                    x_words.append(cut_eol(map(lambda w_idx : self.model.word_indxs_src[w_idx], x[i])))
+                    print "Input: {}".format(" ".join(x_words[i]))
+                    xpara.append(x[i][:len(x_words[i])])
+                
+                '''
                 if len(x_words) == 0:
                     continue
+                '''
+                
+                #print 'lenxpara:',len(xpara)
+                #print 'xpara',xpara
 
-                print "Input: {}".format(" ".join(x_words))
                 print "Target: {}".format(" ".join(y_words))
-                self.model.get_samples(self.state['seqlen'] + 1, self.state['n_samples'], x[:len(x_words)])
+                #print self.enc_dec.sample_test()(*xpara)
+                self.model.get_samples(self.state['seqlen'] + 1, self.state['n_samples'], *xpara)
                 sample_idx += 1
 
 def parse_args():
@@ -93,7 +112,7 @@ def main():
     logger.debug("Run training")
     main = MainLoop(train_data, None, None, lm_model, algo, state, None,
             reset=state['reset'],
-            hooks=[RandomSamplePrinter(state, lm_model, train_data)]
+            hooks=[RandomSamplePrinter(state, lm_model, train_data, enc_dec)]
                 if state['hookFreq'] >= 0
                 else None)
     if state['reload']:
