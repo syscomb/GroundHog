@@ -1780,9 +1780,10 @@ class Decoder_joint(EncoderDecoderBase):
         self._create_embedding_layers()
         self._create_transition_layers()
         self._create_inter_level_layers()
-        self._create_initialization_layers()
+        #self._create_initialization_layers()
         self._create_decoding_layers()
         self._create_readout_layers()
+        self.create_init_layers
 
         if self.state['search']:
             assert self.num_levels == 1
@@ -1800,7 +1801,7 @@ class Decoder_joint(EncoderDecoderBase):
                 n_in = self.state['dim'],
                 n_hids = self.state['dim'] * self.state['hid_mult'],
                 activation = prefix_lookup(self.state, 'dec', 'activ'),
-                bias_scale = self.state['bias']
+                bias_scale = self.state['bias'],
                 name = '{}_initer_{}'.format(self.prefix, i),
                 **self.default_kwargs))
 
