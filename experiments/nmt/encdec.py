@@ -1780,7 +1780,7 @@ class Decoder_joint(EncoderDecoderBase):
         self._create_embedding_layers()
         self._create_transition_layers()
         self._create_inter_level_layers()
-        #self._create_initialization_layers()
+        self._create_initialization_layers()
         self._create_decoding_layers()
         self._create_readout_layers()
         self.create_init_layers()
@@ -2002,8 +2002,8 @@ class Decoder_joint(EncoderDecoderBase):
                 init_c = init_cs[0]
                 for i in range(1,self.state['num_systems']):
                     init_c += init_cs[i]
-                init_states.append(init_c)
-                #init_states.append(self.initializers[level](init_c))
+                #init_states.append(init_c)
+                init_states.append(self.initializers[level](init_c))
 
         c = Concatenate(axis=0)(*c)
         c_mask=Concatenate(axis=0)(*c_mask)
