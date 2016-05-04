@@ -2200,6 +2200,8 @@ class Decoder_joint(EncoderDecoderBase):
         c = next(args)
         print c
         #print len(c)
+        print c.ndim
+        print c.shape
         assert c[0].ndim == 2
         T = next(args)
         print T
@@ -2234,6 +2236,7 @@ class Decoder_joint(EncoderDecoderBase):
         '''
         print len(states)
         print len(c)
+        print c[0].ndim
         # Pad with final states
         non_sequences = [c, T]
 
