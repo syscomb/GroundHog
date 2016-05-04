@@ -2207,7 +2207,7 @@ class Decoder_joint(EncoderDecoderBase):
         print T
         assert T.ndim == 0
 
-        decoder_args = dict(given_init_states=prev_hidden_states, T=T, c=truc)
+        decoder_args = dict(given_init_states=prev_hidden_states, T=T, c=truec)
 
         sample, log_prob = self.build_decoder(y=prev_word, step_num=step_num, mode=Decoder.SAMPLING, **decoder_args)[:2]
         hidden_states = self.build_decoder(y=sample, step_num=step_num, mode=Decoder.SAMPLING, **decoder_args)[2:]
