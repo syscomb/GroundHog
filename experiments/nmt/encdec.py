@@ -2006,7 +2006,8 @@ class Decoder_joint(EncoderDecoderBase):
                 init_states.append(self.initializers[level](init_c))
 
         c = Concatenate(axis=0)(*c)
-        c_mask=Concatenate(axis=0)(*c_mask)
+        if c_mask:
+            c_mask=Concatenate(axis=0)(*c_mask)
         # Low rank embeddings of all the input words.
         # Shape if mode == evaluation
         #   (n_words, rank_n_approx),
@@ -2216,7 +2217,7 @@ class Decoder_joint(EncoderDecoderBase):
         init_c = init_cs[0]
         for i in range(1,self.state['num_systems']):
             init_c += init_cs[i]
-        c = Concatenate(axis=0)(*c)
+        #c = Concatenate(axis=0)(*c)
         #init_c = c[0, -self.state['dim']:]
         states += [ReplicateLayer(n_samples)(init(init_c).out).out for init in self.initializers]
 
