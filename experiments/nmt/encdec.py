@@ -2198,16 +2198,16 @@ class Decoder_joint(EncoderDecoderBase):
         print prev_hidden_states
         # Arguments that correspond to scan's "non_sequences":
         c = next(args)
-        print c
+        truec = []
         #print len(c)
-        print c.ndim
-        print c.shape
+        for i in xrange(self.state['num_systems']):
+            truec.append(c[i])
         assert c[0].ndim == 2
         T = next(args)
         print T
         assert T.ndim == 0
 
-        decoder_args = dict(given_init_states=prev_hidden_states, T=T, c=c)
+        decoder_args = dict(given_init_states=prev_hidden_states, T=T, c=truc)
 
         sample, log_prob = self.build_decoder(y=prev_word, step_num=step_num, mode=Decoder.SAMPLING, **decoder_args)[:2]
         hidden_states = self.build_decoder(y=sample, step_num=step_num, mode=Decoder.SAMPLING, **decoder_args)[2:]
