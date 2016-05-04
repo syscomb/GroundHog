@@ -2193,8 +2193,12 @@ class Decoder_joint(EncoderDecoderBase):
         prev_hidden_states = [next(args) for k in range(self.num_levels)]
         assert prev_hidden_states[0].ndim == 2
 
+        print step_num
+        print prev_word
+        print prev_hidden_states
         # Arguments that correspond to scan's "non_sequences":
         c = next(args)
+        print c
         print len(c)
         assert c[0].ndim == 2
         T = next(args)
