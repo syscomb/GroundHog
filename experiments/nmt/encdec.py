@@ -2830,7 +2830,7 @@ class SystemCombination(object):
                 sampling_c_components.append(self.forward_sampling_c)
             if self.state['backward']:
                 sampling_c_components.append(self.backward_sampling_c)
-            all_sampling_c_components.append(Concatenate(axis=0)(*sampling_c_components).out)
+            all_sampling_c_components.append(Concatenate(axis=1)(*sampling_c_components).out)
 
         #self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
         (self.sample, self.sample_log_prob), self.sampling_updates =\
