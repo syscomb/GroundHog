@@ -2195,7 +2195,7 @@ class Decoder_joint(EncoderDecoderBase):
 
         # Arguments that correspond to scan's "non_sequences":
         c = next(args)
-        assert c.ndim == 2
+        assert c[0].ndim == 2
         T = next(args)
         assert T.ndim == 0
 
