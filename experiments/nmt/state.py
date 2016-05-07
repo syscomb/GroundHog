@@ -215,6 +215,7 @@ def prototype_state():
     state['save_by_iter'] = False
     state['saveiter'] = 10000
     state['model_dir'] = 'models/'
+    state['syscomb'] = False
 
     return state
 
