@@ -211,6 +211,11 @@ def prototype_state():
     # Raise exception if nan
     state['on_nan'] = 'raise'
 
+    #save
+    state['save_by_iter'] = False
+    state['saveiter'] = 10000
+    state['model_dir'] = 'models/'
+
     return state
 
 def prototype_phrase_state():

@@ -244,14 +244,14 @@ class MainLoop(object):
 
         # ignore keyboard interrupt while saving
         s = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        numpy.savez('models/'+self.state['prefix']+'timing_iter%d.npz' % self.step,
+        numpy.savez(self.state['model_dir']+'/'+self.state['prefix']+'timing_iter%d.npz' % self.step,
                     **self.timings)
         if self.state['overwrite']:
             #self.model.save(self.state['prefix']+'model.npz')
-            self.model.save('models/'+self.state['prefix'] +
+            self.model.save(self.state['model_dir']+'/'+self.state['prefix'] +
                             'model_iter%d.npz' % self.step)
         else:
-            self.model.save('models/'+self.state['prefix'] +
+            self.model.save(self.state['model_dir']+'/'+self.state['prefix'] +
                             'model_iter%d.npz' % self.step)
         cPickle.dump(self.state, open('models/'+self.state['prefix']+'state_iter%d.pkl' % self.step, 'w'))
         self.save_iter += 1
