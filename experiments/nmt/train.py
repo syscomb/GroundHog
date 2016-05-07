@@ -144,7 +144,7 @@ def main():
         sampler = RandomSamplePrinter_multi(state, lm_model, train_data, enc_dec)
     else:
         train_data = get_batch_iterator(state)
-        sampler = RandomSamplePrinter(state, lm_model, train_data, enc_dec)
+        sampler = RandomSamplePrinter(state, lm_model, train_data)
     logger.debug("Compile trainer")
     algo = eval(state['algo'])(lm_model, state, train_data)
     logger.debug("Run training")
