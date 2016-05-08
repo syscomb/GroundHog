@@ -1613,7 +1613,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         start = 0
         for i in xrange(state['num_systems']):
             if mx[i] < lengths[i][idx]:
-                xs[i][:mx[i], idx] = x[0][idx][start:start+mx]
+                xs[i][:mx[i], idx] = x[0][idx][start:start+mx[i]]
             else:
                 xs[i][:lengths[i][idx], idx] = x[0][idx][start:start+lengths[i][idx]]
 
