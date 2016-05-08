@@ -253,7 +253,7 @@ class MainLoop(object):
         else:
             self.model.save(self.state['model_dir']+'/'+self.state['prefix'] +
                             'model_iter%d.npz' % self.step)
-        cPickle.dump(self.state, open('models/'+self.state['prefix']+'state_iter%d.pkl' % self.step, 'w'))
+        cPickle.dump(self.state, open(self.state['model_dir']+self.state['prefix']+'state_iter%d.pkl' % self.step, 'w'))
         self.save_iter += 1
         signal.signal(signal.SIGINT, s)
 
