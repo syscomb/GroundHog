@@ -266,11 +266,14 @@ def main():
                 print "Parsed Input:", parsed_in
             trans, costs, _ = sample(lm_model, seq, n_samples, sampler=sampler,
                     beam_search=beam_search, ignore_unk=args.ignore_unk, normalize=args.normalize)
-            best = numpy.argmin(costs)
-            print >>ftrans, trans[best]
+            try:
+                best = numpy.argmin(costs)
+                print >>ftrans, trans[best]
+                total_cost += costs[best]
+            except:
+                print >> ftrans, "FAIL"
             if args.verbose:
                 print "Translation:", trans[best]
-            total_cost += costs[best]
             if (i + 1)  % 100 == 0:
                 ftrans.flush()
                 logger.debug("Current speed is {} per sentence".
