@@ -38,6 +38,7 @@ class BeamSearch(object):
         state = self.enc_dec.state
         self.eos_id = state['null_sym_target']
         self.unk_id = state['unk_sym_target']
+        self.split_id = state['split_sym']
 
     def compile(self):
         self.comp_repr = self.enc_dec.create_representation_computer()
@@ -46,6 +47,7 @@ class BeamSearch(object):
         self.comp_next_states = self.enc_dec.create_next_states_computer()
 
     def search(self, seq, n_samples, ignore_unk=False, minlen=1):
+        print seq
         c = self.comp_repr(seq)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         dim = states[0].shape[1]
