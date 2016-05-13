@@ -2222,7 +2222,7 @@ class Decoder_joint(EncoderDecoderBase):
         #if mode == Decoder.SAMPLING:
         #    for i in xrange(self.state['num_systems']):
         #        c[i] = c[i].dimshuffle(1,0,2)
-        if mode != Decoder.SAMPLING:
+        if mode == Decoder.EVALUATION:
             c = Concatenate(axis=0)(*c)
         else:
             #c = Concatenate(axis=1)(*c).out
