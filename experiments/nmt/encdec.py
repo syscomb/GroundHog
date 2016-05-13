@@ -2654,10 +2654,10 @@ class SystemCombination(object):
 
     def create_initializers(self):
         if not hasattr(self, "init_fn"):
-            init_c = self.sampling_c[0, -self.state['dim']:]
+            #init_c = self.sampling_c[0, -self.state['dim']:]
             self.init_fn = theano.function(
                     inputs=self.all_sampling_c_components,
-                    outputs=self.decoder.build_initializers(init_c),
+                    outputs=self.decoder.build_initializers(self.all_sampling_c_components),
                     name="init_fn")
         return self.init_fn
 
