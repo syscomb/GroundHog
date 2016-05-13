@@ -48,7 +48,6 @@ class BeamSearch(object):
         self.comp_next_states = self.enc_dec.create_next_states_computer()
 
     def search(self, seq, n_samples, ignore_unk=False, minlen=1):
-        print seq
         x = []
         last_split = -1
         for i in xrange(len(seq)):
@@ -58,7 +57,6 @@ class BeamSearch(object):
         assert self.num_systems == len(x)
         for i in xrange(self.num_systems):
             x[i][-1]=self.eos_id
-            print x[i]
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         dim = states[0].shape[1]
