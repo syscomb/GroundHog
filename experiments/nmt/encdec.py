@@ -2435,7 +2435,10 @@ class Decoder_joint(EncoderDecoderBase):
         return [sample, log_prob] + hidden_states
 
     def build_initializers(self, c):
-        return [init(c).out for init in self.initializers]
+        init_cs = []
+        for i in xrange(self.state['num_systems']):
+            init_cs.append(c[i][0, -self.state['dim']:])
+        return [self.initer(init(cs).out)]
 
     def build_sampler(self, n_samples, n_steps, T, c):
         states = [TT.zeros(shape=(n_samples,), dtype='int64'),
