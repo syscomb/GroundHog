@@ -46,8 +46,8 @@ class BeamSearch(object):
         self.comp_next_states = self.enc_dec.create_next_states_computer()
 
     def search(self, seq, n_samples, ignore_unk=False, minlen=1):
-        c = self.comp_repr(seq)[0]
-        states = map(lambda x : x[None, :], self.comp_init_states(c))
+        c = self.comp_repr(seq)#[0]
+        states = map(lambda x : x[None, :], self.comp_init_states(*c))
         dim = states[0].shape[1]
 
         num_levels = len(states)

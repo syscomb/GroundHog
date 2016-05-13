@@ -2645,7 +2645,7 @@ class SystemCombination(object):
         if not hasattr(self, "repr_fn"):
             self.repr_fn = theano.function(
                     inputs=self.sampling_x,
-                    outputs=[self.all_sampling_c_components],
+                    outputs=self.all_sampling_c_components,
                     name="repr_fn")
         return self.repr_fn
 
@@ -2653,7 +2653,7 @@ class SystemCombination(object):
         if not hasattr(self, "init_fn"):
             init_c = self.sampling_c[0, -self.state['dim']:]
             self.init_fn = theano.function(
-                    inputs=[self.all_sampling_c_components],
+                    inputs=self.all_sampling_c_components,
                     outputs=self.decoder.build_initializers(init_c),
                     name="init_fn")
         return self.init_fn
