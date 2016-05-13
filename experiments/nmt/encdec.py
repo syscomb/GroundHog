@@ -2438,7 +2438,7 @@ class Decoder_joint(EncoderDecoderBase):
         init_cs = []
         for i in xrange(self.state['num_systems']):
             init_cs.append(c[i][0, -self.state['dim']:])
-        return [self.initer(init(cs).out)]
+        return [self.initer(init_cs).out]
 
     def build_sampler(self, n_samples, n_steps, T, c):
         states = [TT.zeros(shape=(n_samples,), dtype='int64'),
