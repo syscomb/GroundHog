@@ -53,11 +53,11 @@ class BeamSearch(object):
         last_split = -1
         for i in xrange(len(seq)):
             if seq[i] == self.split_id:
-                x.append(seq[last_split+1:i])
+                x.append(seq[last_split+1:i+1])
                 last_split = i
         assert self.num_systems == len(x)
         for i in xrange(self.num_systems):
-            x[i].append(self.eos_id)
+            x[-1]=self.eos_id
             print x[i]
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
