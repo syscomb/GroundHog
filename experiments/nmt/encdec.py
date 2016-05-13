@@ -2472,7 +2472,7 @@ class Decoder_joint(EncoderDecoderBase):
                 given_init_states=init_states, step_num=step_num)
 
     def build_next_states_computer(self, c, step_num, y, init_states):
-        c = Concatenate(axis=0)(*c)
+        c = Concatenate(axis=0)(*c).out
         return self.build_decoder(c, y, mode=Decoder.SAMPLING,
                 given_init_states=init_states, step_num=step_num)[2:]
 
