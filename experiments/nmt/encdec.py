@@ -2644,7 +2644,7 @@ class SystemCombination(object):
     def create_representation_computer(self):
         if not hasattr(self, "repr_fn"):
             self.repr_fn = theano.function(
-                    inputs=[self.sampling_x],
+                    inputs=self.sampling_x,
                     outputs=[self.all_sampling_c_components],
                     name="repr_fn")
         return self.repr_fn
