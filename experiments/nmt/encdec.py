@@ -2008,7 +2008,7 @@ class Decoder_joint(EncoderDecoderBase):
                 n_hids = self.state['dim'] * self.state['hid_mult'],
                 activation = prefix_lookup(self.state, 'dec', 'activ'),
                 bias_scale = self.state['bias'],
-                name = '{}_initer'.format(self.prefix),
+                name = '{}_initer_0'.format(self.prefix),
                 num_inputs = self.state['num_systems'],
                 **self.default_kwargs)
         '''
@@ -2536,7 +2536,7 @@ class SystemCombination(object):
             training_c_components = []
             logger.debug("Create encoder"+str(i))
             self.encoders.append(Encoder(self.state, self.rng,
-                    prefix="enc",
+                    prefix="enc"+str(i),
                     skip_init=self.skip_init))
             self.encoders[i].create_layers()
 
