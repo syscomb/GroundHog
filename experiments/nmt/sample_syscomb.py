@@ -57,6 +57,7 @@ class BeamSearch(object):
         assert self.num_systems == len(x)
         #for i in xrange(self.num_systems):
         #    x[i][-1]=self.eos_id
+        print x[0]
         c = self.comp_repr(*x)#[0]
         print len(c)
         print c[0].shape
