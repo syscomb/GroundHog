@@ -58,12 +58,20 @@ class BeamSearch(object):
         for i in xrange(self.num_systems):
             x[i][-1]=self.eos_id
         c = self.comp_repr(*x)#[0]
+        print len(c)
+        print c[0].shape
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         try:
             print states.shape
         except:
             print len(states)
-        #states = self.comp_init_states(*c)
+            print states[0].shape
+        states = self.comp_init_states(*c)
+        try:
+            print states.shape
+        except:
+            print len(states)
+            print states[0].shape
         dim = states[0].shape[1]
 
         num_levels = len(states)
