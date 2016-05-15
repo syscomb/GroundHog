@@ -59,6 +59,7 @@ class BeamSearch(object):
         assert self.num_systems == len(x)
         for i in xrange(self.num_systems):
             x[i][-1]=self.source_eos_id
+        print x[0]
         print x[1]
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
