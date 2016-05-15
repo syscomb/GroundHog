@@ -1988,7 +1988,7 @@ class Decoder_joint(EncoderDecoderBase):
         self._create_embedding_layers()
         self._create_transition_layers()
         self._create_inter_level_layers()
-        self._create_initialization_layers()
+        #self._create_initialization_layers()
         self._create_decoding_layers()
         self._create_readout_layers()
         self.create_init_layers()
