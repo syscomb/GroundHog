@@ -1689,6 +1689,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         returndict['x'+str(i)] = xs[i]
         returndict['x_mask'+str(i)] = xsmask[i]
     #print returndict
+    print len(y[0])
     if return_dict:
         return returndict
     else:
