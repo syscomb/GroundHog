@@ -2548,7 +2548,7 @@ class SystemCombination(object):
 
             logger.debug("Create backward encoder"+str(i))
             self.backward_encoders.append(Encoder(self.state, self.rng,
-                    prefix="back_enc",
+                    prefix="back_enc"+str(i),
                     skip_init=self.skip_init))
             self.backward_encoders[i].create_layers()
 
@@ -2566,7 +2566,7 @@ class SystemCombination(object):
                 training_c_components.append(forward_training_c)
             if self.state['backward']:
                 training_c_components.append(backward_training_c)
-            all_c_components.append(Concatenate(axis=2)(*training_c_components).out)
+            all_c_components.append(Concatenate(axis=2)(*training_c_components))
             self.state['c_dim'] = len(training_c_components) * self.state['dim']
 
         logger.debug("Create decoder")
