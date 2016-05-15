@@ -36,6 +36,7 @@ class BeamSearch(object):
     def __init__(self, enc_dec):
         self.enc_dec = enc_dec
         state = self.enc_dec.state
+        self.source_eos_id = state['null_sym_source']
         self.eos_id = state['null_sym_target']
         self.unk_id = state['unk_sym_target']
         self.split_id = state['split_sym']
@@ -56,9 +57,9 @@ class BeamSearch(object):
                 x.append(seq[last_split+1:i])
                 last_split = i
         assert self.num_systems == len(x)
-        #for i in xrange(self.num_systems):
-        #    x[i][-1]=self.eos_id
-        print x[0]
+        for i in xrange(self.num_systems):
+            x[i][-1]=self.source_eos_id
+        print x[1]
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         dim = states[0].shape[1]
