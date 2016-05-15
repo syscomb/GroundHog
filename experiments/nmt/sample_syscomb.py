@@ -54,7 +54,7 @@ class BeamSearch(object):
         last_split = -1
         for i in xrange(len(seq)):
             if seq[i] == self.split_id:
-                x.append(seq[last_split+1:i])
+                x.append(seq[last_split+1:i+1])
                 last_split = i
         assert self.num_systems == len(x)
         for i in xrange(self.num_systems):
