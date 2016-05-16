@@ -50,6 +50,7 @@ class BeamSearch(object):
         self.comp_next_probs = self.enc_dec.create_next_probs_computer()
         self.comp_next_states = self.enc_dec.create_next_states_computer()
         self.get_sample = self.enc_dec.create_sampler()
+        self.get_test = self.enc_dec.sample_test()
 
     def search(self, seq, n_samples, ignore_unk=False, minlen=1):
 
@@ -65,8 +66,9 @@ class BeamSearch(object):
         for i in xrange(self.num_systems):
             x[i][-1]=self.source_eos_id
             print x[i]
-        print self.get_sample(1,51,1,*x)
+        print self.get_test(1,51,1,*x)
         c = self.comp_repr(*x)#[0]
+        print c
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         c = numpy.concatenate(c, axis=0)
         dim = states[0].shape[1]

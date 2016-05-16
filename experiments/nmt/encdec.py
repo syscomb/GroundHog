@@ -2680,8 +2680,10 @@ class SystemCombination(object):
     
     def sample_test(self):
         self.test_fn = theano.function(
-                inputs=[]+self.sampling_x,
-                outputs=self.all_sampling_c_components)
+                inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
+                outputs=self.all_sampling_c_components,
+                updates=self.sampling_updates,
+                name="sample_fn")
         return self.test_fn
 
     def create_scorer(self, batch=False):
