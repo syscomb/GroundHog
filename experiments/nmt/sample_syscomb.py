@@ -17,19 +17,7 @@ from experiments.nmt import\
     prototype_state,\
     parse_input
 
-from groundhog.layers import\
-        Layer,\
-        MultiLayer,\
-        SoftmaxLayer,\
-        HierarchicalSoftmaxLayer,\
-        LSTMLayer, \
-        RecurrentLayer,\
-        RecursiveConvolutionalLayer,\
-        UnaryOp,\
-        Shift,\
-        LastState,\
-        DropOp,\
-        Concatenate
+
 
 from experiments.nmt.numpy_compat import argpartition
 
@@ -78,7 +66,7 @@ class BeamSearch(object):
             print x[i]
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
-        c = Concatenate(axis=0)(*c)
+        c = numpy.concatenate(axis=0)(*c)
         dim = states[0].shape[1]
 
         num_levels = len(states)
