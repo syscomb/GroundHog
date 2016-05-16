@@ -146,10 +146,12 @@ class BeamSearch(object):
                     fin_trans.append(new_trans[i])
                     fin_costs.append(new_costs[i])
             print trans
+            print costs
             states = map(lambda x : x[indices], new_states)
-            print states.shape
+            print len(states)
+            print states[0].shape
             print states
-            exit()
+            raw_input('--------------')
 
         # Dirty tricks to obtain any translation
         if not len(fin_trans):
