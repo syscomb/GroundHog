@@ -96,7 +96,8 @@ class BeamSearch(object):
             print last_words
             log_probs = numpy.log(self.comp_next_probs(c, k, last_words, *states)[0])
             print log_probs
-            print log_probs[3]
+            if log_probs.shape[0]>=4:
+                print log_probs[3]
 
             # Adjust log probs according to search restrictions
             if ignore_unk:
