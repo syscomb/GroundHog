@@ -17,6 +17,20 @@ from experiments.nmt import\
     prototype_state,\
     parse_input
 
+from groundhog.layers import\
+        Layer,\
+        MultiLayer,\
+        SoftmaxLayer,\
+        HierarchicalSoftmaxLayer,\
+        LSTMLayer, \
+        RecurrentLayer,\
+        RecursiveConvolutionalLayer,\
+        UnaryOp,\
+        Shift,\
+        LastState,\
+        DropOp,\
+        Concatenate
+
 from experiments.nmt.numpy_compat import argpartition
 
 logger = logging.getLogger(__name__)
