@@ -2692,7 +2692,7 @@ class SystemCombination(object):
     def sample_test(self):
         self.test_fn = theano.function(
                 inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
-                outputs=self.sample_init_state_test,
+                outputs=[self.sample_init_state_test.out],
                 name="sample_test_fn")
         return self.test_fn
 
