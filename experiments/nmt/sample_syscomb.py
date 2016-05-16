@@ -93,11 +93,7 @@ class BeamSearch(object):
             last_words = (numpy.array(map(lambda t : t[-1], trans))
                     if k > 0
                     else numpy.zeros(beam_size, dtype="int64"))
-            print last_words
             log_probs = numpy.log(self.comp_next_probs(c, k, last_words, *states)[0])
-            print log_probs
-            if log_probs.shape[0]>=4:
-                print log_probs[3]
 
             # Adjust log probs according to search restrictions
             if ignore_unk:
@@ -132,7 +128,6 @@ class BeamSearch(object):
                 for level in range(num_levels):
                     new_states[level][i] = states[level][orig_idx]
                 inputs[i] = next_word
-            print inputs
             new_states = self.comp_next_states(c, k, inputs, *new_states)
             print new_states[0][3]
 
@@ -149,13 +144,7 @@ class BeamSearch(object):
                     n_samples -= 1
                     fin_trans.append(new_trans[i])
                     fin_costs.append(new_costs[i])
-            print trans
-            print costs
             states = map(lambda x : x[indices], new_states)
-            print len(states)
-            print states[0].shape
-            print states
-            raw_input('--------------')
 
         # Dirty tricks to obtain any translation
         if not len(fin_trans):
@@ -187,7 +176,7 @@ def sample(lm_model, seq, n_samples,
     if beam_search:
         sentences = []
         trans, costs = beam_search.search(seq, n_samples,
-                ignore_unk=ignore_unk, minlen=len(seq) / 2)
+                ignore_unk=ignore_unk, minlen=len(seq) / 8)
         if normalize:
             counts = [len(s) for s in trans]
             costs = [co / cn for co, cn in zip(costs, counts)]
