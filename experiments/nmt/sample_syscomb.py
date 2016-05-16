@@ -66,7 +66,7 @@ class BeamSearch(object):
             print x[i]
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
-        c = numpy.concatenate(axis=0)(*c)
+        c = numpy.concatenate(*c, axis=0)
         dim = states[0].shape[1]
 
         num_levels = len(states)
