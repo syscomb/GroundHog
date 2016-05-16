@@ -94,6 +94,7 @@ class BeamSearch(object):
                     if k > 0
                     else numpy.zeros(beam_size, dtype="int64"))
             log_probs = numpy.log(self.comp_next_probs(c, k, last_words, *states)[0])
+            print log_probs
 
             # Adjust log probs according to search restrictions
             if ignore_unk:
@@ -146,7 +147,7 @@ class BeamSearch(object):
             print trans
             states = map(lambda x : x[indices], new_states)
             print states
-            break
+            exit()
 
         # Dirty tricks to obtain any translation
         if not len(fin_trans):
