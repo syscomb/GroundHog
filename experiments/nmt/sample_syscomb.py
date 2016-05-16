@@ -64,6 +64,7 @@ class BeamSearch(object):
             print x[i]
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
+        c = Concatenate(axis=0)(*c)
         dim = states[0].shape[1]
 
         num_levels = len(states)
@@ -84,7 +85,7 @@ class BeamSearch(object):
             last_words = (numpy.array(map(lambda t : t[-1], trans))
                     if k > 0
                     else numpy.zeros(beam_size, dtype="int64"))
-            log_probs = numpy.log(self.comp_next_probs(k, last_words, *(c+states))[0])
+            log_probs = numpy.log(self.comp_next_probs(c, k, last_words, *states)[0])
 
             # Adjust log probs according to search restrictions
             if ignore_unk:
@@ -119,7 +120,7 @@ class BeamSearch(object):
                 for level in range(num_levels):
                     new_states[level][i] = states[level][orig_idx]
                 inputs[i] = next_word
-            new_states = self.comp_next_states(k, inputs, *(c+new_states))
+            new_states = self.comp_next_states(c, k, inputs, *new_states)
 
             # Filter the sequences that end with end-of-sequence character
             trans = []
