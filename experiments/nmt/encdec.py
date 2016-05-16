@@ -2466,8 +2466,8 @@ class Decoder_joint(EncoderDecoderBase):
                 sequences=[TT.arange(n_steps, dtype="int64")],
                 n_steps=n_steps,
                 name="{}_sampler_scan".format(self.prefix))
-        return (outputs[0], outputs[1], outputs[2]), updates
-
+        return (outputs[0], outputs[1]), updates
+    '''
     def build_sample_test(self, n_samples, n_steps, T, c):
         states = [TT.zeros(shape=(n_samples,), dtype='int64'),
                 TT.zeros(shape=(n_samples,), dtype='float32')]
@@ -2477,6 +2477,7 @@ class Decoder_joint(EncoderDecoderBase):
         states += [ReplicateLayer(n_samples)(self.initer(init_cs)).out]
         c = Concatenate(axis=0)(*c)
         return c
+    '''
 
     def build_next_probs_predictor(self, c, step_num, y, init_states):
         return self.build_decoder(c, y, mode=Decoder.BEAM_SEARCH,
@@ -2621,7 +2622,7 @@ class SystemCombination(object):
         #self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
         self.all_sampling_c_components = all_sampling_c_components
         self.sample_init_state_test = self.decoder.build_sample_test(self.n_samples, self.n_steps, self.T,c=all_sampling_c_components)
-        (self.sample, self.sample_log_prob, self.sample_hidden_states), self.sampling_updates =\
+        (self.sample, self.sample_log_prob), self.sampling_updates =\
             self.decoder.build_sampler(self.n_samples, self.n_steps, self.T,
                     c=all_sampling_c_components)
                     #c=Concatenate(axis=0)(*all_sampling_c_components))
@@ -2688,14 +2689,14 @@ class SystemCombination(object):
                 return map(lambda x : x.squeeze(), self.sample_fn(1, *args))
             return sampler
         return self.sample_fn
-    
+    '''
     def sample_test(self):
         self.test_fn = theano.function(
                 inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
                 outputs=[self.sample_init_state_test.out],
                 name="sample_test_fn")
         return self.test_fn
-
+    '''
     def create_scorer(self, batch=False):
         if not hasattr(self, 'score_fn'):
             logger.debug("Compile scorer")
