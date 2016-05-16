@@ -66,7 +66,7 @@ class BeamSearch(object):
         for i in xrange(self.num_systems):
             x[i][-1]=self.source_eos_id
             print x[i]
-        print self.get_test(1,51,1,*x)
+        print self.get_sample(1,51,1,*x)
         c = self.comp_repr(*x)#[0]
         print c
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
@@ -145,6 +145,8 @@ class BeamSearch(object):
                     fin_costs.append(new_costs[i])
             print trans
             states = map(lambda x : x[indices], new_states)
+            print states
+            break
 
         # Dirty tricks to obtain any translation
         if not len(fin_trans):
