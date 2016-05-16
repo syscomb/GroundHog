@@ -2620,7 +2620,7 @@ class SystemCombination(object):
 
         #self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
         self.all_sampling_c_components = all_sampling_c_components
-        self.sample_init_state_test = self.decoder.build_sample_test(self.n_samples, self.n_steps, self.T,c=all_sampling_c_components)
+        (self.sample_init_state_test, self.sample_init_c_test) = self.decoder.build_sample_test(self.n_samples, self.n_steps, self.T,c=all_sampling_c_components)
         (self.sample, self.sample_log_prob), self.sampling_updates =\
             self.decoder.build_sampler(self.n_samples, self.n_steps, self.T,
                     c=all_sampling_c_components)
@@ -2692,7 +2692,7 @@ class SystemCombination(object):
     def sample_test(self):
         self.test_fn = theano.function(
                 inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
-                outputs=self.sample_init_state_test,
+                outputs=[self.sample_init_state_test,self.sample_init_c_test]
                 name="sample_test_fn")
         return self.test_fn
 
