@@ -68,7 +68,7 @@ class BeamSearch(object):
             print x[i]
         print self.get_test(1,51,1,*x)
         c = self.comp_repr(*x)#[0]
-        print c
+        #print c
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         c = numpy.concatenate(c, axis=0)
         dim = states[0].shape[1]
@@ -141,6 +141,7 @@ class BeamSearch(object):
                     n_samples -= 1
                     fin_trans.append(new_trans[i])
                     fin_costs.append(new_costs[i])
+            print trans
             states = map(lambda x : x[indices], new_states)
 
         # Dirty tricks to obtain any translation
