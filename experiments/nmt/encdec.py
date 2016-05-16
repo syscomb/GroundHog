@@ -2681,7 +2681,7 @@ class SystemCombination(object):
         logger.debug("Compile sampler")
         self.sample_fn = theano.function(
                 inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
-                outputs=[self.sample, self.sample_log_prob, self.sample_hidden_states],
+                outputs=[self.sample, self.sample_log_prob],
                 updates=self.sampling_updates,
                 name="sample_fn")
         if not many_samples:
