@@ -55,15 +55,13 @@ class BeamSearch(object):
         last_split = -1
         for i in xrange(len(seq)):
             if seq[i] == self.split_id:
-                tmp = copy.deepcopy(seq[last_split+1:i+2])
+                tmp = copy.deepcopy(seq[last_split+1:i+1])
                 x.append(tmp)
                 last_split = i
         assert self.num_systems == len(x)
         for i in xrange(self.num_systems):
             x[i][-1]=self.source_eos_id
-            x[i][-2]=5
-        print x[0]
-        print x[1]
+            print x[i]
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         dim = states[0].shape[1]
