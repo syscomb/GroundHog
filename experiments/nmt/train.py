@@ -88,7 +88,6 @@ class RandomSamplePrinter_multi(object):
                     x_words.append(cut_eol(map(lambda w_idx : self.model.word_indxs_src[w_idx], x[i])))
                     print "Input: {}".format(" ".join(x_words[i]))
                     xpara.append(x[i][:len(x_words[i])])
-                    print xpara[i]
                 
                 '''
                 if len(x_words) == 0:
