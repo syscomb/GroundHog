@@ -2466,7 +2466,7 @@ class Decoder_joint(EncoderDecoderBase):
                 sequences=[TT.arange(n_steps, dtype="int64")],
                 n_steps=n_steps,
                 name="{}_sampler_scan".format(self.prefix))
-        return (outputs[0], outputs[1]), updates
+        return (outputs[0], outputs[1], outputs[2]), updates
 
     def build_sample_test(self, n_samples, n_steps, T, c):
         states = [TT.zeros(shape=(n_samples,), dtype='int64'),
@@ -2621,7 +2621,7 @@ class SystemCombination(object):
         #self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
         self.all_sampling_c_components = all_sampling_c_components
         self.sample_init_state_test = self.decoder.build_sample_test(self.n_samples, self.n_steps, self.T,c=all_sampling_c_components)
-        (self.sample, self.sample_log_prob), self.sampling_updates =\
+        (self.sample, self.sample_log_prob, self.sample_hidden_states), self.sampling_updates =\
             self.decoder.build_sampler(self.n_samples, self.n_steps, self.T,
                     c=all_sampling_c_components)
                     #c=Concatenate(axis=0)(*all_sampling_c_components))
@@ -2680,7 +2680,7 @@ class SystemCombination(object):
         logger.debug("Compile sampler")
         self.sample_fn = theano.function(
                 inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
-                outputs=[self.sample, self.sample_log_prob],
+                outputs=[self.sample, self.sample_log_prob, self.sample_hidden_states],
                 updates=self.sampling_updates,
                 name="sample_fn")
         if not many_samples:
