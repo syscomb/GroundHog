@@ -2476,6 +2476,7 @@ class Decoder_joint(EncoderDecoderBase):
             init_cs.append(c[i][0, -self.state['dim']:])
         states += [ReplicateLayer(n_samples)(self.initer(init_cs)).out]
         c = Concatenate(axis=0)(*c)
+        return states, c
 
     def build_next_probs_predictor(self, c, step_num, y, init_states):
         return self.build_decoder(c, y, mode=Decoder.BEAM_SEARCH,
