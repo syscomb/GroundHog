@@ -2616,9 +2616,7 @@ class SystemCombination(object):
                     #c=Concatenate(axis=0)(*all_sampling_c_components))
 
         logger.debug("Create auxiliary variables")
-        self.c = []
-        for i in xrange(self.state['num_systems']):
-            self.c.append(TT.matrix("c"))
+        self.c = TT.matrix("c")
         self.step_num = TT.lscalar("step_num")
         self.current_states = [TT.matrix("cur_{}".format(i))
                 for i in range(self.decoder.num_levels)]
