@@ -2468,6 +2468,15 @@ class Decoder_joint(EncoderDecoderBase):
                 name="{}_sampler_scan".format(self.prefix))
         return (outputs[0], outputs[1]), updates
 
+    def build_sample_test(self, n_samples, n_steps, T, c):
+        states = [TT.zeros(shape=(n_samples,), dtype='int64'),
+                TT.zeros(shape=(n_samples,), dtype='float32')]
+        init_cs = []
+        for i in xrange(self.state['num_systems']):
+            init_cs.append(c[i][0, -self.state['dim']:])
+        states += [ReplicateLayer(n_samples)(self.initer(init_cs)).out]
+        c = Concatenate(axis=0)(*c)
+
     def build_next_probs_predictor(self, c, step_num, y, init_states):
         return self.build_decoder(c, y, mode=Decoder.BEAM_SEARCH,
                 given_init_states=init_states, step_num=step_num)
@@ -2610,6 +2619,7 @@ class SystemCombination(object):
 
         #self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
         self.all_sampling_c_components = all_sampling_c_components
+        self.sample_init_state_test = self.decoder.build_sample_test(self.n_samples, self.n_steps, self.T,c=all_sampling_c_components)
         (self.sample, self.sample_log_prob), self.sampling_updates =\
             self.decoder.build_sampler(self.n_samples, self.n_steps, self.T,
                     c=all_sampling_c_components)
@@ -2681,9 +2691,8 @@ class SystemCombination(object):
     def sample_test(self):
         self.test_fn = theano.function(
                 inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
-                outputs=self.all_sampling_c_components,
-                updates=self.sampling_updates,
-                name="sample_fn")
+                outputs=self.sample_init_state_test,
+                name="sample_test_fn")
         return self.test_fn
 
     def create_scorer(self, batch=False):
