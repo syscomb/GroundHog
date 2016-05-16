@@ -54,7 +54,6 @@ class BeamSearch(object):
 
     def search(self, seq, n_samples, ignore_unk=False, minlen=1):
 
-        print seq
         x = []
         last_split = -1
         for i in xrange(len(seq)):
@@ -65,14 +64,9 @@ class BeamSearch(object):
         assert self.num_systems == len(x)
         for i in xrange(self.num_systems):
             x[i][-1]=self.source_eos_id
-            print x[i]
-        print self.get_sample(1,51,1,*x)
         c = self.comp_repr(*x)#[0]
-        print c
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
-        #print states
         c = numpy.concatenate(c, axis=0)
-        print c
         dim = states[0].shape[1]
 
         num_levels = len(states)
@@ -129,7 +123,6 @@ class BeamSearch(object):
                     new_states[level][i] = states[level][orig_idx]
                 inputs[i] = next_word
             new_states = self.comp_next_states(c, k, inputs, *new_states)
-            print new_states[0][3]
 
             # Filter the sequences that end with end-of-sequence character
             trans = []
