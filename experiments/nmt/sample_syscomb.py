@@ -18,7 +18,6 @@ from experiments.nmt import\
     parse_input
 
 
-
 from experiments.nmt.numpy_compat import argpartition
 
 logger = logging.getLogger(__name__)
@@ -50,8 +49,10 @@ class BeamSearch(object):
         self.comp_init_states = self.enc_dec.create_initializers()
         self.comp_next_probs = self.enc_dec.create_next_probs_computer()
         self.comp_next_states = self.enc_dec.create_next_states_computer()
+        self.get_sample = self.enc_dec.create_sampler()
 
     def search(self, seq, n_samples, ignore_unk=False, minlen=1):
+
         print seq
         x = []
         last_split = -1
@@ -64,6 +65,7 @@ class BeamSearch(object):
         for i in xrange(self.num_systems):
             x[i][-1]=self.source_eos_id
             print x[i]
+        print self.get_sample(51,1,*x)
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         c = numpy.concatenate(c, axis=0)
