@@ -50,7 +50,7 @@ class BeamSearch(object):
         self.comp_next_probs = self.enc_dec.create_next_probs_computer()
         self.comp_next_states = self.enc_dec.create_next_states_computer()
         self.get_sample = self.enc_dec.create_sampler()
-        self.get_test = self.enc_dec.sample_test()
+        #self.get_test = self.enc_dec.sample_test()
 
     def search(self, seq, n_samples, ignore_unk=False, minlen=1):
 
