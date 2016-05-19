@@ -2537,48 +2537,87 @@ class SystemCombination(object):
         self.inputs += [self.y, self.y_mask]
         print 'inputs:',self.inputs
 
-
-        self.encoders = []
-        self.backward_encoders = []
         # Annotation for the log-likelihood computation
         all_c_components = []
+        forward_training_cs = []
+        backward_training_cs = []
+        training_c_componentss = []
 
-        for i in xrange(self.state['num_systems']):
-            training_c_components = []
-            logger.debug("Create encoder"+str(i))
-            self.encoders.append(Encoder(self.state, self.rng,
-                    prefix="enc"+str(i),
-                    skip_init=self.skip_init))
-            self.encoders[i].create_layers()
+        if not self.state['same_encoder']:
 
-            logger.debug("Build encoding computation graph"+str(i))
-            forward_training_c = self.encoders[i].build_encoder(
-                    self.x[i], self.x_mask[i],
-                    use_noise=True,
-                    return_hidden_layers=True)
+            self.encoders = []
+            self.backward_encoders = []
+            
 
-            logger.debug("Create backward encoder"+str(i))
-            self.backward_encoders.append(Encoder(self.state, self.rng,
-                    prefix="back_enc"+str(i),
-                    skip_init=self.skip_init))
-            self.backward_encoders[i].create_layers()
+            for i in xrange(self.state['num_systems']):
+                training_c_componentss.append([])
+                logger.debug("Create encoder"+str(i))
+                self.encoders.append(Encoder(self.state, self.rng,
+                        prefix="enc"+str(i),
+                        skip_init=self.skip_init))
+                self.encoders[i].create_layers()
 
-            logger.debug("Build backward encoding computation graph"+str(i))
-            backward_training_c = self.backward_encoders[i].build_encoder(
-                    self.x[i][::-1],
-                    self.x_mask[i][::-1],
-                    use_noise=True,
-                    approx_embeddings=self.encoders[i].approx_embedder(self.x[i][::-1]),
-                    return_hidden_layers=True)
-            # Reverse time for backward representations.
-            backward_training_c.out = backward_training_c.out[::-1]
+                logger.debug("Build encoding computation graph"+str(i))
+                forward_training_cs.append(self.encoders[i].build_encoder(
+                        self.x[i], self.x_mask[i],
+                        use_noise=True,
+                        return_hidden_layers=True))
 
-            if self.state['forward']:
-                training_c_components.append(forward_training_c)
-            if self.state['backward']:
-                training_c_components.append(backward_training_c)
-            all_c_components.append(Concatenate(axis=2)(*training_c_components))
-            self.state['c_dim'] = len(training_c_components) * self.state['dim']
+                logger.debug("Create backward encoder"+str(i))
+                self.backward_encoders.append(Encoder(self.state, self.rng,
+                        prefix="back_enc"+str(i),
+                        skip_init=self.skip_init))
+                self.backward_encoders[i].create_layers()
+
+                logger.debug("Build backward encoding computation graph"+str(i))
+                backward_training_cs.append(self.backward_encoders[i].build_encoder(
+                        self.x[i][::-1],
+                        self.x_mask[i][::-1],
+                        use_noise=True,
+                        approx_embeddings=self.encoders[i].approx_embedder(self.x[i][::-1]),
+                        return_hidden_layers=True))
+                # Reverse time for backward representations.
+                backward_training_c.out = backward_training_cs[i].out[::-1]
+
+                if self.state['forward']:
+                    training_c_componentss[i].append(forward_training_cs[i])
+                if self.state['backward']:
+                    training_c_componentss[i].append(backward_training_cs[i])
+                all_c_components.append(Concatenate(axis=2)(*training_c_componentss[i]))
+                self.state['c_dim'] = len(training_c_componentss[i]) * self.state['dim']
+        else:
+            logger.debug("Create encoder")
+            self.encoder = Encoder(self.state, self.rng,
+                        prefix="enc",
+                        skip_init=self.skip_init))
+            self.encoder.create_layers()
+            logger.debug("Create backward encoder")
+            self.backward_encoder = Encoder(self.state, self.rng,
+                        prefix="back_enc",
+                        skip_init=self.skip_init))
+            self.backward_encoder.create_layers()
+            for i in xrange(self.state['num_systems']):
+                logger.debug("Build encoding computation graph"+str(i))
+                forward_training_cs.append(self.encoder.build_encoder(
+                        self.x[i], self.x_mask[i],
+                        use_noise=True,
+                        return_hidden_layers=True))
+                logger.debug("Build backward encoding computation graph"+str(i))
+                backward_training_cs.append(self.backward_encoder.build_encoder(
+                        self.x[i][::-1],
+                        self.x_mask[i][::-1],
+                        use_noise=True,
+                        approx_embeddings=self.encoder.approx_embedder(self.x[i][::-1]),
+                        return_hidden_layers=True))
+                # Reverse time for backward representations.
+                backward_training_c.out = backward_training_cs[i].out[::-1]
+                if self.state['forward']:
+                    training_c_componentss[i].append(forward_training_cs[i])
+                if self.state['backward']:
+                    training_c_componentss[i].append(backward_training_cs[i])
+                all_c_components.append(Concatenate(axis=2)(*training_c_componentss[i]))
+                self.state['c_dim'] = len(training_c_componentss[i]) * self.state['dim']
+
 
         logger.debug("Create decoder")
         if self.state['joint']:

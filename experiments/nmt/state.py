@@ -308,5 +308,6 @@ def prototype_syscomb_state():
     state['separate'] = False # must set joint to False if want to use seperate
     state['prefix'] = 'syscomb_'
     state['split_sym'] = -1
+    state['same_encoder'] = False
 
     return state
