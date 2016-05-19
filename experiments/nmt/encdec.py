@@ -2517,7 +2517,7 @@ class SystemCombination(object):
             If True, the alignment is returned by the decoder.
         """
 
-        if not state.hsa_key('same_encoder'):
+        if not state.has_key('same_encoder'):
             state['same_encoder'] = False
         self.state = state
         self.rng = rng
