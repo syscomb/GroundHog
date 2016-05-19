@@ -2539,9 +2539,6 @@ class SystemCombination(object):
 
         # Annotation for the log-likelihood computation
         all_c_components = []
-        forward_training_cs = []
-        backward_training_cs = []
-        training_c_componentss = []
 
         if not self.state['same_encoder']:
 
@@ -2550,7 +2547,7 @@ class SystemCombination(object):
             
 
             for i in xrange(self.state['num_systems']):
-                training_c_componentss.append([])
+                training_c_components = []
                 logger.debug("Create encoder"+str(i))
                 self.encoders.append(Encoder(self.state, self.rng,
                         prefix="enc"+str(i),
@@ -2558,10 +2555,10 @@ class SystemCombination(object):
                 self.encoders[i].create_layers()
 
                 logger.debug("Build encoding computation graph"+str(i))
-                forward_training_cs.append(self.encoders[i].build_encoder(
+                forward_training_c = self.encoders[i].build_encoder(
                         self.x[i], self.x_mask[i],
                         use_noise=True,
-                        return_hidden_layers=True))
+                        return_hidden_layers=True)
 
                 logger.debug("Create backward encoder"+str(i))
                 self.backward_encoders.append(Encoder(self.state, self.rng,
@@ -2570,21 +2567,21 @@ class SystemCombination(object):
                 self.backward_encoders[i].create_layers()
 
                 logger.debug("Build backward encoding computation graph"+str(i))
-                backward_training_cs.append(self.backward_encoders[i].build_encoder(
+                backward_training_c = self.backward_encoders[i].build_encoder(
                         self.x[i][::-1],
                         self.x_mask[i][::-1],
                         use_noise=True,
                         approx_embeddings=self.encoders[i].approx_embedder(self.x[i][::-1]),
-                        return_hidden_layers=True))
+                        return_hidden_layers=True)
                 # Reverse time for backward representations.
-                backward_training_c.out = backward_training_cs[i].out[::-1]
+                backward_training_c.out = backward_training_c.out[::-1]
 
                 if self.state['forward']:
-                    training_c_componentss[i].append(forward_training_cs[i])
+                    training_c_components.append(forward_training_c)
                 if self.state['backward']:
-                    training_c_componentss[i].append(backward_training_cs[i])
-                all_c_components.append(Concatenate(axis=2)(*training_c_componentss[i]))
-                self.state['c_dim'] = len(training_c_componentss[i]) * self.state['dim']
+                    training_c_components.append(backward_training_c)
+                all_c_components.append(Concatenate(axis=2)(*training_c_components))
+                self.state['c_dim'] = len(training_c_components) * self.state['dim']
         else:
             logger.debug("Create encoder")
             self.encoder = Encoder(self.state, self.rng,
@@ -2597,26 +2594,26 @@ class SystemCombination(object):
                         skip_init=self.skip_init)
             self.backward_encoder.create_layers()
             for i in xrange(self.state['num_systems']):
+                training_c_components = []
                 logger.debug("Build encoding computation graph"+str(i))
-                forward_training_cs.append(self.encoder.build_encoder(
+                forward_training_c = self.encoder.build_encoder(
                         self.x[i], self.x_mask[i],
                         use_noise=True,
-                        return_hidden_layers=True))
+                        return_hidden_layers=True)
                 logger.debug("Build backward encoding computation graph"+str(i))
-                backward_training_cs.append(self.backward_encoder.build_encoder(
+                backward_training_c = self.backward_encoder.build_encoder(
                         self.x[i][::-1],
                         self.x_mask[i][::-1],
                         use_noise=True,
                         approx_embeddings=self.encoder.approx_embedder(self.x[i][::-1]),
-                        return_hidden_layers=True))
-                # Reverse time for backward representations.
-                backward_training_c.out = backward_training_cs[i].out[::-1]
+                        return_hidden_layers=True)
+                backward_training_c.out = backward_training_c.out[::-1]
                 if self.state['forward']:
-                    training_c_componentss[i].append(forward_training_cs[i])
+                    training_c_components.append(forward_training_c)
                 if self.state['backward']:
-                    training_c_componentss[i].append(backward_training_cs[i])
-                all_c_components.append(Concatenate(axis=2)(*training_c_componentss[i]))
-                self.state['c_dim'] = len(training_c_componentss[i]) * self.state['dim']
+                    training_c_components.append(backward_training_c)
+                all_c_components.append(Concatenate(axis=2)(*training_c_components))
+                self.state['c_dim'] = len(training_c_components) * self.state['dim']
 
 
         logger.debug("Create decoder")
@@ -2643,20 +2640,37 @@ class SystemCombination(object):
         self.n_samples = TT.lscalar("n_samples")
         self.n_steps = TT.lscalar("n_steps")
         self.T = TT.scalar("T")
-        for i in xrange(self.state['num_systems']):
-            sampling_c_components = []
-            self.forward_sampling_c = self.encoders[i].build_encoder(
-                    self.sampling_x[i],
-                    return_hidden_layers=True).out
-            self.backward_sampling_c = self.backward_encoders[i].build_encoder(
-                    self.sampling_x[i][::-1],
-                    approx_embeddings=self.encoders[i].approx_embedder(self.sampling_x[i][::-1]),
-                    return_hidden_layers=True).out[::-1]
-            if self.state['forward']:
-                sampling_c_components.append(self.forward_sampling_c)
-            if self.state['backward']:
-                sampling_c_components.append(self.backward_sampling_c)
-            all_sampling_c_components.append(Concatenate(axis=1)(*sampling_c_components).out)
+
+        if not self.state['same_encoder']:
+            for i in xrange(self.state['num_systems']):
+                sampling_c_components = []
+                self.forward_sampling_c = self.encoders[i].build_encoder(
+                        self.sampling_x[i],
+                        return_hidden_layers=True).out
+                self.backward_sampling_c = self.backward_encoders[i].build_encoder(
+                        self.sampling_x[i][::-1],
+                        approx_embeddings=self.encoders[i].approx_embedder(self.sampling_x[i][::-1]),
+                        return_hidden_layers=True).out[::-1]
+                if self.state['forward']:
+                    sampling_c_components.append(self.forward_sampling_c)
+                if self.state['backward']:
+                    sampling_c_components.append(self.backward_sampling_c)
+                all_sampling_c_components.append(Concatenate(axis=1)(*sampling_c_components).out)
+        else:
+            for i in xrange(self.state['num_systems']):
+                sampling_c_components = []
+                self.forward_sampling_c = self.encoder.build_encoder(
+                        self.sampling_x[i],
+                        return_hidden_layers=True).out
+                self.backward_sampling_c = self.backward_encoder.build_encoder(
+                        self.sampling_x[i][::-1],
+                        approx_embeddings=self.encoder.approx_embedder(self.sampling_x[i][::-1]),
+                        return_hidden_layers=True).out[::-1]
+                if self.state['forward']:
+                    sampling_c_components.append(self.forward_sampling_c)
+                if self.state['backward']:
+                    sampling_c_components.append(self.backward_sampling_c)
+                all_sampling_c_components.append(Concatenate(axis=1)(*sampling_c_components).out)
 
         #self.sampling_c = Concatenate(axis=1)(*sampling_c_components).out
         self.all_sampling_c_components = all_sampling_c_components
