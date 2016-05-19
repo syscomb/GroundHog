@@ -1566,6 +1566,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     #print lengths
 
     #mx = state['seqlen']
+    print 'max length:', maxl
     mx = [state['seqlen']]*state['num_systems']
     my = state['seqlen']
     if state['trim_batches']:

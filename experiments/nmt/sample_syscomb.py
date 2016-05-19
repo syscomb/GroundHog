@@ -144,7 +144,7 @@ class BeamSearch(object):
             if ignore_unk:
                 logger.warning("Did not manage without UNK")
                 return self.search(seq, n_samples, False, minlen)
-            elif n_samples < 500:
+            elif n_samples < 100:
                 logger.warning("Still no translations: try beam size {}".format(n_samples * 2))
                 return self.search(seq, n_samples * 2, False, minlen)
             else:
