@@ -2589,12 +2589,12 @@ class SystemCombination(object):
             logger.debug("Create encoder")
             self.encoder = Encoder(self.state, self.rng,
                         prefix="enc",
-                        skip_init=self.skip_init))
+                        skip_init=self.skip_init)
             self.encoder.create_layers()
             logger.debug("Create backward encoder")
             self.backward_encoder = Encoder(self.state, self.rng,
                         prefix="back_enc",
-                        skip_init=self.skip_init))
+                        skip_init=self.skip_init)
             self.backward_encoder.create_layers()
             for i in xrange(self.state['num_systems']):
                 logger.debug("Build encoding computation graph"+str(i))
