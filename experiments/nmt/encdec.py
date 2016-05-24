@@ -1561,8 +1561,8 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
                 num_system += 1
 
     print 'max length:', maxl
-    print x
-    print y
+    #print x
+    #print y
     mx = [state['seqlen']]*state['num_systems']
     my = state['seqlen']
     if state['trim_batches']:
@@ -1685,8 +1685,8 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
     for i in xrange(state['num_systems']):
         returndict['x'+str(i)] = xs[i]
         returndict['x_mask'+str(i)] = xsmask[i]
-    print returndict
-    print len(Y[0])
+    #print returndict
+    #print len(Y[0])
     if return_dict:
         return returndict
     else:
