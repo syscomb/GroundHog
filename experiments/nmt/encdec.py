@@ -1686,7 +1686,7 @@ def create_padded_batch_multi(state, x, y, return_dict=False):
         returndict['x'+str(i)] = xs[i]
         returndict['x_mask'+str(i)] = xsmask[i]
     #print returndict
-    #print len(Y[0])
+    print len(Y[0])
     if return_dict:
         return returndict
     else:
@@ -2222,9 +2222,12 @@ class Decoder_joint(EncoderDecoderBase):
         #        c[i] = c[i].dimshuffle(1,0,2)
         if mode == Decoder.EVALUATION:
             c = Concatenate(axis=0)(*c)
-        else:
+        elif mode == Decoder.EVALUATION:
             #c = Concatenate(axis=1)(*c).out
             print 'sampling_cndim',c.ndim
+        elif mode == Decoder.BEAM_SEARCH:
+            #c = Concatenate(axis=1)(*c).out
+            print 'bs_cndim',c.ndim
         if c_mask:
             c_mask=Concatenate(axis=0)(*c_mask)
         # Low rank embeddings of all the input words.
@@ -2477,11 +2480,12 @@ class Decoder_joint(EncoderDecoderBase):
     '''
 
     def build_next_probs_predictor(self, c, step_num, y, init_states):
+        c = Concatenate(axis=0)(*c).out
         return self.build_decoder(c, y, mode=Decoder.BEAM_SEARCH,
                 given_init_states=init_states, step_num=step_num)
 
     def build_next_states_computer(self, c, step_num, y, init_states):
-        #c = Concatenate(axis=0)(*c).out
+        c = Concatenate(axis=0)(*c)
         return self.build_decoder(c, y, mode=Decoder.SAMPLING,
                 given_init_states=init_states, step_num=step_num)[2:]
 
@@ -2680,7 +2684,9 @@ class SystemCombination(object):
                     #c=Concatenate(axis=0)(*all_sampling_c_components))
 
         logger.debug("Create auxiliary variables")
-        self.c = TT.matrix("c")
+        self.c = []
+        for i in xrange(self.state['num_systems']):
+            self.c.append(TT.matrix("c"+str(i)))
         self.step_num = TT.lscalar("step_num")
         self.current_states = [TT.matrix("cur_{}".format(i))
                 for i in range(self.decoder.num_levels)]
@@ -2768,7 +2774,7 @@ class SystemCombination(object):
     def create_next_probs_computer(self):
         if not hasattr(self, 'next_probs_fn'):
             self.next_probs_fn = theano.function(
-                    inputs=[self.c, self.step_num, self.gen_y]+ self.current_states,
+                    inputs=[self.step_num, self.gen_y]+ self.current_states+self.c,
                     outputs=[self.decoder.build_next_probs_predictor(
                         self.c, self.step_num, self.gen_y, self.current_states)],
                     name="next_probs_fn")
@@ -2777,7 +2783,7 @@ class SystemCombination(object):
     def create_next_states_computer(self):
         if not hasattr(self, 'next_states_fn'):
             self.next_states_fn = theano.function(
-                    inputs=[self.c, self.step_num, self.gen_y] + self.current_states,
+                    inputs=[self.step_num, self.gen_y] + self.current_states+ self.c,
                     outputs=self.decoder.build_next_states_computer(
                         self.c, self.step_num, self.gen_y, self.current_states),
                     name="next_states_fn")

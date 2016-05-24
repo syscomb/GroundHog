@@ -360,7 +360,10 @@ class MainLoop(object):
                 if self.state['hookFreq'] > 0 and \
                    self.step % self.state['hookFreq'] == 0 and \
                    self.hooks:
-                    [fn() for fn in self.hooks]
+                    try:
+                        [fn() for fn in self.hooks]
+                    except:
+                        print 'sample failed'
                 if self.reset > 0 and self.step > 1 and \
                    self.step % self.reset == 0:
                     print 'Resetting the data iterator'

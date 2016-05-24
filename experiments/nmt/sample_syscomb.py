@@ -66,7 +66,7 @@ class BeamSearch(object):
             x[i][-1]=self.source_eos_id
         c = self.comp_repr(*x)#[0]
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
-        c = numpy.concatenate(c, axis=0)
+        #c = numpy.concatenate(c, axis=0)
         dim = states[0].shape[1]
 
         num_levels = len(states)
@@ -87,7 +87,9 @@ class BeamSearch(object):
             last_words = (numpy.array(map(lambda t : t[-1], trans))
                     if k > 0
                     else numpy.zeros(beam_size, dtype="int64"))
-            log_probs = numpy.log(self.comp_next_probs(c, k, last_words, *states)[0])
+
+            log_probs = numpy.log(self.comp_next_probs(k, last_words, *(states+c))[0])
+            print log_probs
 
             # Adjust log probs according to search restrictions
             if ignore_unk:
@@ -122,7 +124,7 @@ class BeamSearch(object):
                 for level in range(num_levels):
                     new_states[level][i] = states[level][orig_idx]
                 inputs[i] = next_word
-            new_states = self.comp_next_states(c, k, inputs, *new_states)
+            new_states = self.comp_next_states(k, inputs, *(new_states+c))
 
             # Filter the sequences that end with end-of-sequence character
             trans = []
@@ -138,6 +140,7 @@ class BeamSearch(object):
                     fin_trans.append(new_trans[i])
                     fin_costs.append(new_costs[i])
             states = map(lambda x : x[indices], new_states)
+
 
         # Dirty tricks to obtain any translation
         if not len(fin_trans):
