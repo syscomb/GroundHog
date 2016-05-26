@@ -251,6 +251,7 @@ class MultiLayer(Layer):
         If the input is ints, we assume is an index, otherwise we assume is
         a set of floats.
         """
+        print 'use noise:', use_noise
         if self.weight_noise and use_noise and self.noise_params:
             W_ems = [(x+y) for x, y in zip(self.W_ems, self.nW_ems)]
             if not no_noise_bias:
@@ -282,8 +283,10 @@ class MultiLayer(Layer):
 
         if self.dropout < 1.:
             if use_noise:
+                print 'training use noise'
                 emb_val = emb_val * self.trng.binomial(emb_val.shape, n=1, p=self.dropout, dtype=emb_val.dtype)
             else:
+                print 'decoding not use noise'
                 emb_val = emb_val * self.dropout
         for dx in xrange(1, self.n_layers):
             emb_val = utils.dot(emb_val, W_ems[st_pos+dx])

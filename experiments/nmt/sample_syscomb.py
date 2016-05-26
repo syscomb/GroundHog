@@ -65,6 +65,7 @@ class BeamSearch(object):
         for i in xrange(self.num_systems):
             x[i][-1]=self.source_eos_id
         c = self.comp_repr(*x)#[0]
+        #print self.get_sample(1,5,1,*x)
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         #c = numpy.concatenate(c, axis=0)
         dim = states[0].shape[1]
@@ -89,7 +90,7 @@ class BeamSearch(object):
                     else numpy.zeros(beam_size, dtype="int64"))
 
             log_probs = numpy.log(self.comp_next_probs(k, last_words, *(states+c))[0])
-            print log_probs
+            #print log_probs
 
             # Adjust log probs according to search restrictions
             if ignore_unk:

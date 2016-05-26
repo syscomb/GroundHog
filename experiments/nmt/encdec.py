@@ -2222,11 +2222,11 @@ class Decoder_joint(EncoderDecoderBase):
         #        c[i] = c[i].dimshuffle(1,0,2)
         if mode == Decoder.EVALUATION:
             c = Concatenate(axis=0)(*c)
-        elif mode == Decoder.EVALUATION:
-            #c = Concatenate(axis=1)(*c).out
-            print 'sampling_cndim',c.ndim
+        elif mode == Decoder.SAMPLING:
+            c = Concatenate(axis=0)(*c)
+            #pass
         elif mode == Decoder.BEAM_SEARCH:
-            #c = Concatenate(axis=1)(*c).out
+            c = Concatenate(axis=0)(*c).out
             print 'bs_cndim',c.ndim
         if c_mask:
             c_mask=Concatenate(axis=0)(*c_mask)
@@ -2419,15 +2419,15 @@ class Decoder_joint(EncoderDecoderBase):
         print 'prev_word:',prev_word
         print 'prev_hidden_states:',prev_hidden_states
         # Arguments that correspond to scan's "non_sequences":
-        c = next(args)
-        truec = []
-        #print len(c)
-        #for i in xrange(self.state['num_systems']):
-        #    truec.append(c[i])
-        assert c.ndim == 2
         T = next(args)
-        print 'T:',T
         assert T.ndim == 0
+        #c = next(args)
+
+        c = []
+        for i in xrange(self.state['num_systems']):
+            c.append(next(args))
+        print len(c)
+        
 
         decoder_args = dict(given_init_states=prev_hidden_states, T=T, c=c)
 
@@ -2448,7 +2448,7 @@ class Decoder_joint(EncoderDecoderBase):
         for i in xrange(self.state['num_systems']):
             init_cs.append(c[i][0, -self.state['dim']:])
         states += [ReplicateLayer(n_samples)(self.initer(init_cs)).out]
-        c = Concatenate(axis=0)(*c)
+        #c = Concatenate(axis=0)(*c)
         #init_c = c[0, -self.state['dim']:]
         #states += [ReplicateLayer(n_samples)(init(init_c).out).out for init in self.initializers]
 
@@ -2458,7 +2458,7 @@ class Decoder_joint(EncoderDecoderBase):
             c = PadLayer(n_steps)(c).out
         '''
         # Pad with final states
-        non_sequences = [c, T]
+        non_sequences = [T]+c
 
         outputs, updates = theano.scan(self.sampling_step,
                 outputs_info=states,
@@ -2480,12 +2480,11 @@ class Decoder_joint(EncoderDecoderBase):
     '''
 
     def build_next_probs_predictor(self, c, step_num, y, init_states):
-        c = Concatenate(axis=0)(*c).out
         return self.build_decoder(c, y, mode=Decoder.BEAM_SEARCH,
                 given_init_states=init_states, step_num=step_num)
 
     def build_next_states_computer(self, c, step_num, y, init_states):
-        c = Concatenate(axis=0)(*c)
+        #c = Concatenate(axis=0)(*c)
         return self.build_decoder(c, y, mode=Decoder.SAMPLING,
                 given_init_states=init_states, step_num=step_num)[2:]
 
