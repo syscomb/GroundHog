@@ -305,7 +305,8 @@ def prototype_syscomb_state():
     state['syscomb'] = True
     state['num_systems'] = 1
     state['joint'] = True
-    state['separate'] = False # must set joint to False if want to use seperate
+    state['separate'] = False 
+    state['dec_rec_layer'] = 'RecurrentLayerWithSearch'
     state['prefix'] = 'syscomb_'
     state['split_sym'] = -1
     state['same_encoder'] = False

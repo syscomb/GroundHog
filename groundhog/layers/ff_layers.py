@@ -422,7 +422,7 @@ class UnaryOp(Layer):
         self.activation = activation
         super(UnaryOp, self).__init__(0, 0, None, name)
 
-    def fprop(self, state_below):
+    def fprop(self, state_below, use_noise = True):
         self.out = self.activation(state_below)
         return self.out
 
