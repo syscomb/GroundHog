@@ -251,7 +251,7 @@ class MultiLayer(Layer):
         If the input is ints, we assume is an index, otherwise we assume is
         a set of floats.
         """
-        print 'use noise:', use_noise
+        print 'multilayer use noise:', use_noise
         if self.weight_noise and use_noise and self.noise_params:
             W_ems = [(x+y) for x, y in zip(self.W_ems, self.nW_ems)]
             if not no_noise_bias:
@@ -400,14 +400,17 @@ class DropOp(Layer):
             self.trng = RandomStreams(rng.randint(1e5))
 
     def fprop(self, state_below, use_noise = True):
+        print 'dropop use noise:', use_noise
         self.out = state_below
         if self.dropout < 1.:
             if use_noise:
+                print 'training use noise'
                 self.out = self.out * self.trng.binomial(self.out.shape,
                                                          n=1,
                                                          p=self.dropout,
                                                          dtype=self.out.dtype)
             else:
+                print 'decoding not use noise'
                 self.out = self.out * self.dropout
         return self.out
 

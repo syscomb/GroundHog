@@ -416,6 +416,7 @@ class RecurrentLayerWithSearch(Layer):
         results = [h, ctx]
         if return_alignment:
             results += [probs]
+        print results
         return results
 
     def fprop(self,
@@ -574,6 +575,7 @@ class EncoderDecoderBase(object):
             n_hids=[self.state['rank_n_approx']],
             activation=[self.state['rank_n_activ']],
             name='{}_approx_embdr'.format(self.prefix),
+            dropout=self.state['dropout'],
             **self.default_kwargs)
 
         # We have 3 embeddings for each word in each level,
@@ -592,18 +594,21 @@ class EncoderDecoderBase(object):
             self.input_embedders[level] = MultiLayer(
                 self.rng,
                 name='{}_input_embdr_{}'.format(self.prefix, level),
+                dropout=self.state['dropout'],
                 **embedder_kwargs)
             if prefix_lookup(self.state, self.prefix, 'rec_gating'):
                 self.update_embedders[level] = MultiLayer(
                     self.rng,
                     learn_bias=False,
                     name='{}_update_embdr_{}'.format(self.prefix, level),
+                    dropout=self.state['dropout'],
                     **embedder_kwargs)
             if prefix_lookup(self.state, self.prefix, 'rec_reseting'):
                 self.reset_embedders[level] =  MultiLayer(
                     self.rng,
                     learn_bias=False,
                     name='{}_reset_embdr_{}'.format(self.prefix, level),
+                    dropout=self.state['dropout'],
                     **embedder_kwargs)
 
     def _create_inter_level_layers(self):
@@ -697,6 +702,7 @@ class Encoder(EncoderDecoderBase):
                 n_hids=[self.state['dim'] * self.state['maxout_part']],
                 activation=['lambda x: x'],
                 name="{}_repr_contrib_{}".format(self.prefix, level),
+                dropout=self.state['dropout'],
                 **self.default_kwargs)
         self.repr_calculator = UnaryOp(
                 activation=eval(self.state['unary_activ']),
@@ -1832,7 +1838,7 @@ class RecurrentLayerWithSearch_multi(Layer):
                 name="R_%s"%self.name)
         self.params.append(self.R_hh)
         self.A_cp = []
-        for i in xrange(num_encoders)：
+        for i in xrange(num_encoders):
             self.A_cp.append(theano.shared(
                     sample_weights_classic(self.c_dim,
                         self.n_hids,
@@ -2270,6 +2276,7 @@ class MultiInputLayer(Layer):
         If the input is ints, we assume is an index, otherwise we assume is
         a set of floats.
         """
+        print 'multiinput layer use noise:', use_noise
         result = TT.dot(list_inputs[0] ,self.W_ems[0])
         for i in range(1,self.num_inputs):
             result += TT.dot(list_inputs[i] ,self.W_ems[i])
@@ -2277,8 +2284,10 @@ class MultiInputLayer(Layer):
         state_value = self.activation[0](result)
         if self.dropout < 1.:
             if use_noise:
+                print 'training use noise'
                 state_value = state_value * self.trng.binomial(state_value.shape,n=1,p=self.dropout,dtype=state_value.dtype)
             else:
+                print 'decoding not use noise'
                 state_value = state_value * self.dropout
         self.out = state_value
         return state_value
@@ -2338,6 +2347,7 @@ class Decoder_joint(EncoderDecoderBase):
                 bias_scale = self.state['bias'],
                 name = '{}_initer_0'.format(self.prefix),
                 num_inputs = self.state['num_systems'],
+                dropout=self.state['dropout'],
                 **self.default_kwargs)
         '''
         for i in xrange(self.state['num_systems']):
@@ -2387,18 +2397,21 @@ class Decoder_joint(EncoderDecoderBase):
                 self.decode_inputers[level] = MultiLayer(
                     self.rng,
                     name='{}_dec_inputter_{}'.format(self.prefix, level),
+                    #dropout=self.state['dropout'],
                     **decoding_kwargs)
                 # Update gate contributions
                 if prefix_lookup(self.state, 'dec', 'rec_gating'):
                     self.decode_updaters[level] = MultiLayer(
                         self.rng,
                         name='{}_dec_updater_{}'.format(self.prefix, level),
+                        #dropout=self.state['dropout'],
                         **decoding_kwargs)
                 # Reset gate contributions
                 if prefix_lookup(self.state, 'dec', 'rec_reseting'):
                     self.decode_reseters[level] = MultiLayer(
                         self.rng,
                         name='{}_dec_reseter_{}'.format(self.prefix, level),
+                        #dropout=self.state['dropout'],
                         **decoding_kwargs)
 
     def _create_readout_layers(self):
@@ -2418,6 +2431,7 @@ class Decoder_joint(EncoderDecoderBase):
                 n_in=self.state['c_dim'],
                 learn_bias=False,
                 name='{}_repr_readout'.format(self.prefix),
+                dropout=self.state['dropout'],
                 **readout_kwargs)
 
         # Attention - this is the only readout layer
@@ -2428,6 +2442,7 @@ class Decoder_joint(EncoderDecoderBase):
                 self.rng,
                 n_in=self.state['dim'],
                 name='{}_hid_readout_{}'.format(self.prefix, level),
+                dropout=self.state['dropout'],
                 **readout_kwargs)
 
         self.prev_word_readout = 0
@@ -2439,6 +2454,7 @@ class Decoder_joint(EncoderDecoderBase):
                 activation=['lambda x:x'],
                 learn_bias=False,
                 name='{}_prev_readout_{}'.format(self.prefix, level),
+                dropout=self.state['dropout'],
                 **self.default_kwargs)
 
         if self.state['deep_out']:
@@ -2544,7 +2560,7 @@ class Decoder_joint(EncoderDecoderBase):
             for level in range(self.num_levels):
                 init_cs = []
                 for i in xrange(self.state['num_systems']):
-                    init_cs.append(c[i][0, :, -self.state['dim']:])
+                    init_cs.append(c[i][0, :, -self.state['dim']:].out)
                 #init_states.append(init_c)
                 init_states.append(self.initer(init_cs))
 
@@ -2564,9 +2580,12 @@ class Decoder_joint(EncoderDecoderBase):
             c_mask=Concatenate(axis=0)(*c_mask)
         '''
         if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch':
-            c = Concatenate(axis=0)(*c)
+            if mode == Decoder.EVALUATION:
+                c = Concatenate(axis=0)(*c)
+            else:
+                c = Concatenate(axis=0)(*c).out
             if c_mask:
-                c_mask=Concatenate(axis=0)(*c_mask)
+                c_mask=Concatenate(axis=0)(*c_mask).out
         # Low rank embeddings of all the input words.
         # Shape if mode == evaluation
         #   (n_words, rank_n_approx),
