@@ -575,7 +575,7 @@ class EncoderDecoderBase(object):
             n_hids=[self.state['rank_n_approx']],
             activation=[self.state['rank_n_activ']],
             name='{}_approx_embdr'.format(self.prefix),
-            dropout=self.state['dropout'],
+            dropout=self.state['dropout_ff'],
             **self.default_kwargs)
 
         # We have 3 embeddings for each word in each level,
@@ -594,21 +594,21 @@ class EncoderDecoderBase(object):
             self.input_embedders[level] = MultiLayer(
                 self.rng,
                 name='{}_input_embdr_{}'.format(self.prefix, level),
-                dropout=self.state['dropout'],
+                dropout=self.state['dropout_ff'],
                 **embedder_kwargs)
             if prefix_lookup(self.state, self.prefix, 'rec_gating'):
                 self.update_embedders[level] = MultiLayer(
                     self.rng,
                     learn_bias=False,
                     name='{}_update_embdr_{}'.format(self.prefix, level),
-                    dropout=self.state['dropout'],
+                    dropout=self.state['dropout_ff'],
                     **embedder_kwargs)
             if prefix_lookup(self.state, self.prefix, 'rec_reseting'):
                 self.reset_embedders[level] =  MultiLayer(
                     self.rng,
                     learn_bias=False,
                     name='{}_reset_embdr_{}'.format(self.prefix, level),
-                    dropout=self.state['dropout'],
+                    dropout=self.state['dropout_ff'],
                     **embedder_kwargs)
 
     def _create_inter_level_layers(self):
@@ -702,7 +702,7 @@ class Encoder(EncoderDecoderBase):
                 n_hids=[self.state['dim'] * self.state['maxout_part']],
                 activation=['lambda x: x'],
                 name="{}_repr_contrib_{}".format(self.prefix, level),
-                dropout=self.state['dropout'],
+                dropout=self.state['dropout_ff'],
                 **self.default_kwargs)
         self.repr_calculator = UnaryOp(
                 activation=eval(self.state['unary_activ']),
@@ -2347,7 +2347,7 @@ class Decoder_joint(EncoderDecoderBase):
                 bias_scale = self.state['bias'],
                 name = '{}_initer_0'.format(self.prefix),
                 num_inputs = self.state['num_systems'],
-                dropout=self.state['dropout'],
+                dropout=self.state['dropout_ff'],
                 **self.default_kwargs)
         '''
         for i in xrange(self.state['num_systems']):
@@ -2397,21 +2397,21 @@ class Decoder_joint(EncoderDecoderBase):
                 self.decode_inputers[level] = MultiLayer(
                     self.rng,
                     name='{}_dec_inputter_{}'.format(self.prefix, level),
-                    #dropout=self.state['dropout'],
+                    #dropout=self.state['dropout_ff'],
                     **decoding_kwargs)
                 # Update gate contributions
                 if prefix_lookup(self.state, 'dec', 'rec_gating'):
                     self.decode_updaters[level] = MultiLayer(
                         self.rng,
                         name='{}_dec_updater_{}'.format(self.prefix, level),
-                        #dropout=self.state['dropout'],
+                        #dropout=self.state['dropout_ff'],
                         **decoding_kwargs)
                 # Reset gate contributions
                 if prefix_lookup(self.state, 'dec', 'rec_reseting'):
                     self.decode_reseters[level] = MultiLayer(
                         self.rng,
                         name='{}_dec_reseter_{}'.format(self.prefix, level),
-                        #dropout=self.state['dropout'],
+                        #dropout=self.state['dropout_ff'],
                         **decoding_kwargs)
 
     def _create_readout_layers(self):
@@ -2431,7 +2431,7 @@ class Decoder_joint(EncoderDecoderBase):
                 n_in=self.state['c_dim'],
                 learn_bias=False,
                 name='{}_repr_readout'.format(self.prefix),
-                dropout=self.state['dropout'],
+                dropout=self.state['dropout_ff'],
                 **readout_kwargs)
 
         # Attention - this is the only readout layer
@@ -2442,7 +2442,7 @@ class Decoder_joint(EncoderDecoderBase):
                 self.rng,
                 n_in=self.state['dim'],
                 name='{}_hid_readout_{}'.format(self.prefix, level),
-                dropout=self.state['dropout'],
+                dropout=self.state['dropout_ff'],
                 **readout_kwargs)
 
         self.prev_word_readout = 0
@@ -2454,7 +2454,7 @@ class Decoder_joint(EncoderDecoderBase):
                 activation=['lambda x:x'],
                 learn_bias=False,
                 name='{}_prev_readout_{}'.format(self.prefix, level),
-                dropout=self.state['dropout'],
+                dropout=self.state['dropout_ff'],
                 **self.default_kwargs)
 
         if self.state['deep_out']:

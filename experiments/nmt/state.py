@@ -128,6 +128,8 @@ def prototype_state():
     state['dropout'] = 1.
     # Dropout in recurrent layers
     state['dropout_rec'] = 1.
+    # Dropout in feed-forward layers
+    state['dropout_ff'] = 1.
 
     # WARNING: weight noise regularization is not tested
     # and most probably does not work.
