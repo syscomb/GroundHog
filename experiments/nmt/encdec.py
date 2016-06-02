@@ -460,6 +460,7 @@ class RecurrentLayerWithSearch(Layer):
             else:
                 init_state = TT.alloc(floatX(0), self.n_hids)
 
+        print 'c',c
         p_from_c =  utils.dot(c, self.A_cp).reshape(
                 (c.shape[0], c.shape[1], self.n_hids))
         
@@ -640,8 +641,10 @@ class EncoderDecoderBase(object):
         self.transitions = []
         rec_layer = eval(prefix_lookup(self.state, self.prefix, 'rec_layer'))
         add_args = dict()
-        if rec_layer == RecurrentLayerWithSearch or rec_layer == RecurrentLayerWithSearch_multi:
+        if rec_layer == RecurrentLayerWithSearch:
             add_args = dict(c_dim=self.state['c_dim'])
+        if rec_layer == RecurrentLayerWithSearch_multi:
+            add_args = dict(c_dim=self.state['c_dim'], num_encoders = self.state['num_systems'])
         for level in range(self.num_levels):
             self.transitions.append(rec_layer(
                     self.rng,
@@ -1806,7 +1809,7 @@ class RecurrentLayerWithSearch_multi(Layer):
 
         assert rng is not None, "random number generator should not be empty!"
 
-        super(RecurrentLayerWithSearch, self).__init__(self.n_hids,
+        super(RecurrentLayerWithSearch_multi, self).__init__(self.n_hids,
                 self.n_hids, rng, name)
 
         self.params = []
@@ -1837,16 +1840,28 @@ class RecurrentLayerWithSearch_multi(Layer):
                     rng=self.rng),
                 name="R_%s"%self.name)
         self.params.append(self.R_hh)
+        
         self.A_cp = []
-        for i in xrange(num_encoders):
+        for i in xrange(self.num_encoders):
             self.A_cp.append(theano.shared(
                     sample_weights_classic(self.c_dim,
                         self.n_hids,
                         -1,
                         10 ** (-3),
                         rng=self.rng),
-                    name="A_%s"%self.name))
+                    name="A"+str(i)+"_%s"%self.name))
+
             self.params.append(self.A_cp[i])
+        '''
+        self.A_cp = theano.shared(
+                sample_weights_classic(self.c_dim,
+                    self.n_hids,
+                    -1,
+                    10 ** (-3),
+                    rng=self.rng),
+                name="A_%s"%self.name)
+        self.params.append(self.A_cp)
+        '''
         self.B_hp = theano.shared(
                 sample_weights_classic(self.n_hids,
                     self.n_hids,
@@ -1878,6 +1893,7 @@ class RecurrentLayerWithSearch_multi(Layer):
                    c=None,
                    c_mask=None,
                    p_from_c=None,
+                   nonseq=None,
                    use_noise=True,
                    no_noise_bias=False,
                    step_num=None,
@@ -1920,8 +1936,81 @@ class RecurrentLayerWithSearch_multi(Layer):
         B_hp = self.B_hp
         D_pe = self.D_pe
 
+        # The code works only with 3D tensors
+        '''
+        cndim = c.ndim
+        if cndim == 2:
+            c = c[:, None, :]
+
+        # Warning: either source_num or target_num should be equal,
+        #          or on of them sould be 1 (they have to broadcast)
+        #          for the following code to make any sense.
+        source_len = c.shape[0]
+        source_num = c.shape[1]
+        target_num = state_before.shape[0]
+        dim = self.n_hids
+
+        # Form projection to the tanh layer from the previous hidden state
+        # Shape: (source_len, target_num, dim)
+        p_from_h = ReplicateLayer(source_len)(utils.dot(state_before, B_hp)).out
+
+        # Form projection to the tanh layer from the source annotation.
+        if not p_from_c:
+            p_from_c =  utils.dot(c, A_cp).reshape((source_len, source_num, dim))
+
+        # Sum projections - broadcasting happens at the dimension 1.
+        p = p_from_h + p_from_c
+
+        # Apply non-linearity and project to energy.
+        energy = TT.exp(utils.dot(TT.tanh(p), D_pe)).reshape((source_len, target_num))
+        if c_mask:
+            # This is used for batches only, that is target_num == source_num
+            energy *= c_mask
+        '''
+        '''
+        if nonseq:
+            assert not c
+            assert not c_mask
+            assert not p_from_c
+            c = []
+            c_mask = []
+            p_from_c = []
+            print nonseq
+            for i in xrange(self.num_encoders):
+                c.append(nonseq[3*i])
+                c_mask.append(nonseq[3*i+1])
+                p_from_c.append(nonseq[3*i+2])
+        else:
+            assert c
+            assert not c_mask
+            assert not p_from_c
+
+        need_pc = False
+        if not p_from_c:
+            need_pc = True
+        '''
+        csplit = []
+        csplit.append(c[0:7])
+        csplit.append(c[7:14])
+        c = csplit
+        print c, c[0].ndim
+        #print c
+        if c_mask:
+            cmsplit = []
+            cmsplit.append(c_mask[0:7])
+            cmsplit.append(c_mask[7:14])
+            c_mask = cmsplit
+            print c_mask, c_mask[0].ndim
+        if p_from_c:
+            pcsplit = []
+            pcsplit.append(p_from_c[0:7])
+            pcsplit.append(p_from_c[7:14])
+            p_from_c = pcsplit
+            print p_from_c, p_from_c[0].ndim
+        
+        
         energy = []
-        for i in xrange(num_encoders):
+        for i in xrange(self.num_encoders):
         # The code works only with 3D tensors
             cndim = c[i].ndim
             if cndim == 2:
@@ -1941,32 +2030,36 @@ class RecurrentLayerWithSearch_multi(Layer):
             p_from_h = ReplicateLayer(source_len)(utils.dot(state_before, B_hp)).out
 
         # Form projection to the tanh layer from the source annotation.
-        
             if not p_from_c:
-                p_from_c =  utils.dot(c[i], A_cp[i]).reshape((source_len, source_num, dim))
-
+                p_from_c=utils.dot(c[i], A_cp[i]).reshape((source_len, source_num, dim))
+                p = p_from_h + p_from_c
+            else:
             # Sum projections - broadcasting happens at the dimension 1.
-            p = p_from_h + p_from_c
+                p = p_from_h + p_from_c[i]
 
             # Apply non-linearity and project to energy.
-            energy[i] = TT.exp(utils.dot(TT.tanh(p), D_pe)).reshape((source_len, target_num))
-            if c_mask[i]:
+            energy.append(TT.exp(utils.dot(TT.tanh(p), D_pe)).reshape((source_len, target_num)))
+            if c_mask:
                 # This is used for batches only, that is target_num == source_num
                 energy[i] *= c_mask[i]
 
-        c = Concatenate(axis = 0)(*c)
-        energy = Concatenate(axis = 0)(*energy)
+            if i == 0:
+                # Calculate energy sums.
+                normalizer = energy[i].sum(axis=0)
+            else:
+                normalizer += energy[i].sum(axis=0)
 
-        # Calculate energy sums.
-        normalizer = energy.sum(axis=0)
+        for i in xrange(self.num_encoders):
+            # Get probabilities.
+            probs = energy[i] / normalizer
 
-        # Get probabilities.
-        probs = energy / normalizer
-
-        # Calculate weighted sums of source annotations.
-        # If target_num == 1, c shoulds broadcasted at the 1st dimension.
-        # Probabilities are broadcasted at the 2nd dimension.
-        ctx = (c * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
+            # Calculate weighted sums of source annotations.
+            # If target_num == 1, c shoulds broadcasted at the 1st dimension.
+            # Probabilities are broadcasted at the 2nd dimension.
+            if i == 0:
+                ctx = (c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
+            else:
+                ctx += (c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
 
         state_below += self.c_inputer(ctx).out
         reseter_below += self.c_reseter(ctx).out
@@ -2039,9 +2132,12 @@ class RecurrentLayerWithSearch_multi(Layer):
             else:
                 init_state = TT.alloc(floatX(0), self.n_hids)
 
-        for i in xrange(num_encoders):
-            p_from_c =  utils.dot(c, self.A_cp).reshape(
-                    (c.shape[0], c.shape[1], self.n_hids))
+        
+        print 'c',c
+        p_from_c =  utils.dot(c, self.A_cp[0]+self.A_cp[1]).reshape(
+                (c.shape[0], c.shape[1], self.n_hids))
+        
+        #p_from_c = None
         
         if mask:
             sequences = [state_below, mask, updater_below, reseter_below]
@@ -2061,6 +2157,38 @@ class RecurrentLayerWithSearch_multi(Layer):
                     c=c1, p_from_c=pc,
                     use_noise=use_noise, no_noise_bias=no_noise_bias,
                     return_alignment=return_alignment)
+        '''
+        p_from_c = []
+        for i in xrange(self.num_encoders):
+            p_from_c.append(utils.dot(c[i].out, self.A_cp[i]).reshape(
+                (c[i].shape[0], c[i].shape[1], self.n_hids)))
+          
+        if mask:
+            sequences = [state_below, mask, updater_below, reseter_below]
+            non_sequences = [] 
+            for i in xrange(self.num_encoders):
+                non_sequences.append(c[i])
+                non_sequences.append(c_mask[i])
+                non_sequences.append(p_from_c[i])
+            #              seqs    | out |  non_seqs
+            fn = lambda x, m, g, r,   h,   *nonseq : self.step_fprop(x, h, mask=m,
+                    gater_below=g, reseter_below=r,
+                    nonseq = nonseq,
+                    use_noise=use_noise, no_noise_bias=no_noise_bias,
+                    return_alignment=return_alignment)
+        else:
+            sequences = [state_below, updater_below, reseter_below]
+            non_sequences = [] 
+            for i in xrange(self.num_encoders):
+                non_sequences.append(c[i])
+                non_sequences.append(p_from_c[i])
+            #            seqs   | out | non_seqs
+            fn = lambda x, g, r,   h,    *nonseq : self.step_fprop(x, h,
+                    gater_below=g, reseter_below=r,
+                    nonseq = nonseq,
+                    use_noise=use_noise, no_noise_bias=no_noise_bias,
+                    return_alignment=return_alignment)
+        '''
 
         outputs_info = [init_state, None]
         if return_alignment:
@@ -2579,13 +2707,16 @@ class Decoder_joint(EncoderDecoderBase):
         if c_mask:
             c_mask=Concatenate(axis=0)(*c_mask)
         '''
-        if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch':
+        print 'c0', c
+        if True:#self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch':
             if mode == Decoder.EVALUATION:
+                print 'c1',c
                 c = Concatenate(axis=0)(*c)
+                print 'c2',c
             else:
                 c = Concatenate(axis=0)(*c).out
             if c_mask:
-                c_mask=Concatenate(axis=0)(*c_mask).out
+                c_mask=Concatenate(axis=0)(*c_mask)
         # Low rank embeddings of all the input words.
         # Shape if mode == evaluation
         #   (n_words, rank_n_approx),
@@ -2638,6 +2769,7 @@ class Decoder_joint(EncoderDecoderBase):
                             batch_size=y.shape[1] if y.ndim == 2 else 1,
                             nsteps=y.shape[0]))
             if self.state['search']:
+                print 'cb',c
                 add_kwargs['c'] = c
                 add_kwargs['c_mask'] = c_mask
                 add_kwargs['return_alignment'] = self.compute_alignment
