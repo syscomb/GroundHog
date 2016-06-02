@@ -2350,7 +2350,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
                 name="D_%s"%self.name)
         self.params.append(self.D_pe)
         self.params_grad_scale = [self.grad_scale for x in self.params]
-       
+    '''
     def set_decoding_layers(self, c_inputer, c_reseter, c_updater):
         self.c_inputer = c_inputer
         self.c_reseter = c_reseter
@@ -2358,6 +2358,16 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         for layer in [c_inputer, c_reseter, c_updater]:
             self.params += layer.params
             self.params_grad_scale += layer.params_grad_scale
+    '''
+
+    def set_decoding_layers(self, c_inputers, c_reseters, c_updaters):
+        self.c_inputers = c_inputers
+        self.c_reseters = c_reseters
+        self.c_updaters = c_updaters
+        for layers in [c_inputers, c_reseters, c_updaters]:
+            for layer in layers:
+                self.params += layer.params
+                self.params_grad_scale += layer.params_grad_scale
 
     def step_fprop(self,
                    state_below,
@@ -2508,7 +2518,6 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
             print p_from_c, p_from_c[0].ndim
         '''
         
-        energy = []
         for i in xrange(self.num_encoders):
         # The code works only with 3D tensors
             cndim = c[i].ndim
@@ -2537,32 +2546,25 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
                 p = p_from_h + p_from_c[i]
 
             # Apply non-linearity and project to energy.
-            energy.append(TT.exp(utils.dot(TT.tanh(p), D_pe)).reshape((source_len, target_num)))
+            energy=TT.exp(utils.dot(TT.tanh(p), D_pe)).reshape((source_len, target_num))
             if c_mask:
                 # This is used for batches only, that is target_num == source_num
-                energy[i] *= c_mask[i]
+                energy *= c_mask[i]
 
-            if i == 0:
-                # Calculate energy sums.
-                normalizer = energy[i].sum(axis=0)
-            else:
-                normalizer += energy[i].sum(axis=0)
+            # Calculate energy sums.
+            normalizer = energy.sum(axis=0)
 
-        for i in xrange(self.num_encoders):
             # Get probabilities.
-            probs = energy[i] / normalizer
+            probs = energy / normalizer
 
             # Calculate weighted sums of source annotations.
             # If target_num == 1, c shoulds broadcasted at the 1st dimension.
             # Probabilities are broadcasted at the 2nd dimension.
-            if i == 0:
-                ctx = (c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
-            else:
-                ctx += (c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
+            ctx = (c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
 
-        state_below += self.c_inputer(ctx).out
-        reseter_below += self.c_reseter(ctx).out
-        updater_below += self.c_updater(ctx).out
+            state_below += self.c_inputers[i](ctx).out
+            reseter_below += self.c_reseters[i](ctx).out
+            updater_below += self.c_updaters[i](ctx).out
 
         # Reset gate:
         # optionally reset the hidden state.
@@ -2954,16 +2956,24 @@ class Decoder_joint(EncoderDecoderBase):
         self._create_transition_layers()
         self._create_inter_level_layers()
         #self._create_initialization_layers()
-        self._create_decoding_layers()
         self._create_readout_layers()
         self.create_init_layers()
 
         if self.state['search']:
-            assert self.num_levels == 1
-            self.transitions[0].set_decoding_layers(
-                    self.decode_inputers[0],
-                    self.decode_reseters[0],
-                    self.decode_updaters[0])
+            if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multiseperate':
+                self._create_decoding_layers()
+                assert self.num_levels == 1
+                self.transitions[0].set_decoding_layers(
+                        self.decode_inputers[0],
+                        self.decode_reseters[0],
+                        self.decode_updaters[0])
+            else:
+                self._create_decoding_layers_seperate()
+                assert self.num_levels == 1
+                self.transitions[0].set_decoding_layers(
+                        self.decode_inputers,
+                        self.decode_reseters,
+                        self.decode_updaters)
 
     def create_init_layers(self):
         logger.debug("create_init_layers")
@@ -3004,6 +3014,45 @@ class Decoder_joint(EncoderDecoderBase):
                     **self.default_kwargs)
 
     def _create_decoding_layers(self):
+        logger.debug("_create_decoding_layers")
+        self.decode_inputers = [lambda x : 0] * self.state['num_systems']
+        self.decode_reseters = [lambda x : 0] * self.state['num_systems']
+        self.decode_updaters = [lambda x : 0] * self.state['num_systems']
+        self.back_decode_inputers = [lambda x : 0] * self.num_levels
+        self.back_decode_reseters = [lambda x : 0] * self.num_levels
+        self.back_decode_updaters = [lambda x : 0] * self.num_levels
+
+        decoding_kwargs = dict(self.default_kwargs)
+        decoding_kwargs.update(dict(
+                n_in=self.state['c_dim'],
+                n_hids=self.state['dim'] * self.state['dim_mult'],
+                activation=['lambda x:x'],
+                learn_bias=False))
+
+        if self.state['decoding_inputs']:
+            for level in range(self.state['num_systems']):
+                # Input contributions
+                self.decode_inputers[level] = MultiLayer(
+                    self.rng,
+                    name='{}_dec_inputter_{}'.format(self.prefix, level),
+                    #dropout=self.state['dropout_ff'],
+                    **decoding_kwargs)
+                # Update gate contributions
+                if prefix_lookup(self.state, 'dec', 'rec_gating'):
+                    self.decode_updaters[level] = MultiLayer(
+                        self.rng,
+                        name='{}_dec_updater_{}'.format(self.prefix, level),
+                        #dropout=self.state['dropout_ff'],
+                        **decoding_kwargs)
+                # Reset gate contributions
+                if prefix_lookup(self.state, 'dec', 'rec_reseting'):
+                    self.decode_reseters[level] = MultiLayer(
+                        self.rng,
+                        name='{}_dec_reseter_{}'.format(self.prefix, level),
+                        #dropout=self.state['dropout_ff'],
+                        **decoding_kwargs)
+
+    def _create_decoding_layers_seperate(self):
         logger.debug("_create_decoding_layers")
         self.decode_inputers = [lambda x : 0] * self.num_levels
         self.decode_reseters = [lambda x : 0] * self.num_levels
