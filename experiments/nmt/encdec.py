@@ -1892,6 +1892,7 @@ class RecurrentLayerWithSearch_multi(Layer):
                    mask=None,
                    c=None,
                    c_mask=None,
+                   clengths=None,
                    p_from_c=None,
                    nonseq=None,
                    use_noise=True,
@@ -1989,6 +1990,29 @@ class RecurrentLayerWithSearch_multi(Layer):
         if not p_from_c:
             need_pc = True
         '''
+        assert clengths
+        assert len(clengths) == self.num_encoders
+        csplit = []
+        if c_mask:
+            cmsplit = []
+        if p_from_c:
+            pcsplit = []
+        last = 0
+        for i in xrange(self.num_encoders):
+            next = last+clengths[i]
+            csplit.append(c[last:next])
+            if c_mask:
+                cmsplit.append(c_mask[last:next])
+            if p_from_c:
+                pcsplit.append(p_from_c[last:next])
+            last = next
+        c = csplit
+        print c
+        if c_mask:
+            c_mask=cmsplit
+        if p_from_c:
+            p_from_c=pcsplit
+        '''
         csplit = []
         csplit.append(c[0:7])
         csplit.append(c[7:14])
@@ -2007,7 +2031,7 @@ class RecurrentLayerWithSearch_multi(Layer):
             pcsplit.append(p_from_c[7:14])
             p_from_c = pcsplit
             print p_from_c, p_from_c[0].ndim
-        
+        '''
         
         energy = []
         for i in xrange(self.num_encoders):
@@ -2099,6 +2123,7 @@ class RecurrentLayerWithSearch_multi(Layer):
               reseter_below=None,
               c=None,
               c_mask=None,
+              clengths=None,
               nsteps=None,
               batch_size=None,
               use_noise=True,
@@ -2138,23 +2163,23 @@ class RecurrentLayerWithSearch_multi(Layer):
                 (c.shape[0], c.shape[1], self.n_hids))
         
         #p_from_c = None
-        
+        assert clengths
         if mask:
             sequences = [state_below, mask, updater_below, reseter_below]
-            non_sequences = [c, c_mask, p_from_c] 
+            non_sequences = [c, c_mask, p_from_c]+clengths
             #              seqs    | out |  non_seqs
-            fn = lambda x, m, g, r,   h,   c1, cm, pc : self.step_fprop(x, h, mask=m,
+            fn = lambda x, m, g, r,   h,   c1, cm, pc ,*cl: self.step_fprop(x, h, mask=m,
                     gater_below=g, reseter_below=r,
-                    c=c1, p_from_c=pc, c_mask=cm,
+                    c=c1, p_from_c=pc, c_mask=cm,clengths=clengths,
                     use_noise=use_noise, no_noise_bias=no_noise_bias,
                     return_alignment=return_alignment)
         else:
             sequences = [state_below, updater_below, reseter_below]
-            non_sequences = [c, p_from_c]
+            non_sequences = [c, p_from_c]+clengths
             #            seqs   | out | non_seqs
-            fn = lambda x, g, r,   h,    c1, pc : self.step_fprop(x, h,
+            fn = lambda x, g, r,   h,    c1, pc,*cl: self.step_fprop(x, h,
                     gater_below=g, reseter_below=r,
-                    c=c1, p_from_c=pc,
+                    c=c1, p_from_c=pc,clengths=clengths,
                     use_noise=use_noise, no_noise_bias=no_noise_bias,
                     return_alignment=return_alignment)
         '''
@@ -2707,6 +2732,9 @@ class Decoder_joint(EncoderDecoderBase):
         if c_mask:
             c_mask=Concatenate(axis=0)(*c_mask)
         '''
+        clengths = []
+        for i in xrange(self.state['num_systems']):
+            clengths.append(c[i].shape[0])
         print 'c0', c
         if True:#self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch':
             if mode == Decoder.EVALUATION:
@@ -2768,6 +2796,8 @@ class Decoder_joint(EncoderDecoderBase):
                         else dict(init_state=init_states[level],
                             batch_size=y.shape[1] if y.ndim == 2 else 1,
                             nsteps=y.shape[0]))
+            if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multi':
+                add_kwargs['clengths'] = clengths
             if self.state['search']:
                 print 'cb',c
                 add_kwargs['c'] = c
