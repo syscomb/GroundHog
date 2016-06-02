@@ -643,7 +643,7 @@ class EncoderDecoderBase(object):
         add_args = dict()
         if rec_layer == RecurrentLayerWithSearch:
             add_args = dict(c_dim=self.state['c_dim'])
-        if rec_layer == RecurrentLayerWithSearch_multi:
+        if rec_layer == RecurrentLayerWithSearch_multi or rec_layer == RecurrentLayerWithSearch_multiseperate:
             add_args = dict(c_dim=self.state['c_dim'], num_encoders = self.state['num_systems'])
         for level in range(self.num_levels):
             self.transitions.append(rec_layer(
@@ -1776,7 +1776,7 @@ class RecurrentLayerWithSearch_multi(Layer):
                  weight_noise=False,
                  name=None,
                  num_encoders=1):
-        logger.debug("RecurrentLayerWithSearch is used")
+        logger.debug("RecurrentLayerWithSearch_multi is used")
 
         self.grad_scale = 1
         assert gating == True
@@ -2251,7 +2251,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
                  weight_noise=False,
                  name=None,
                  num_encoders=1):
-        logger.debug("RecurrentLayerWithSearch is used")
+        logger.debug("RecurrentLayerWithSearch_multiseperate is used")
 
         self.grad_scale = 1
         assert gating == True
@@ -2284,7 +2284,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
 
         assert rng is not None, "random number generator should not be empty!"
 
-        super(RecurrentLayerWithSearch_multi, self).__init__(self.n_hids,
+        super(RecurrentLayerWithSearch_multiseperate, self).__init__(self.n_hids,
                 self.n_hids, rng, name)
 
         self.params = []
@@ -2961,19 +2961,19 @@ class Decoder_joint(EncoderDecoderBase):
 
         if self.state['search']:
             if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multiseperate':
-                self._create_decoding_layers()
-                assert self.num_levels == 1
-                self.transitions[0].set_decoding_layers(
-                        self.decode_inputers[0],
-                        self.decode_reseters[0],
-                        self.decode_updaters[0])
-            else:
                 self._create_decoding_layers_seperate()
                 assert self.num_levels == 1
                 self.transitions[0].set_decoding_layers(
                         self.decode_inputers,
                         self.decode_reseters,
                         self.decode_updaters)
+            else:
+                self._create_decoding_layers()
+                assert self.num_levels == 1
+                self.transitions[0].set_decoding_layers(
+                        self.decode_inputers[0],
+                        self.decode_reseters[0],
+                        self.decode_updaters[0])
 
     def create_init_layers(self):
         logger.debug("create_init_layers")
@@ -3015,9 +3015,9 @@ class Decoder_joint(EncoderDecoderBase):
 
     def _create_decoding_layers(self):
         logger.debug("_create_decoding_layers")
-        self.decode_inputers = [lambda x : 0] * self.state['num_systems']
-        self.decode_reseters = [lambda x : 0] * self.state['num_systems']
-        self.decode_updaters = [lambda x : 0] * self.state['num_systems']
+        self.decode_inputers = [lambda x : 0] * self.num_levels
+        self.decode_reseters = [lambda x : 0] * self.num_levels
+        self.decode_updaters = [lambda x : 0] * self.num_levels
         self.back_decode_inputers = [lambda x : 0] * self.num_levels
         self.back_decode_reseters = [lambda x : 0] * self.num_levels
         self.back_decode_updaters = [lambda x : 0] * self.num_levels
@@ -3030,7 +3030,7 @@ class Decoder_joint(EncoderDecoderBase):
                 learn_bias=False))
 
         if self.state['decoding_inputs']:
-            for level in range(self.state['num_systems']):
+            for level in range(self.num_levels):
                 # Input contributions
                 self.decode_inputers[level] = MultiLayer(
                     self.rng,
@@ -3054,9 +3054,9 @@ class Decoder_joint(EncoderDecoderBase):
 
     def _create_decoding_layers_seperate(self):
         logger.debug("_create_decoding_layers")
-        self.decode_inputers = [lambda x : 0] * self.num_levels
-        self.decode_reseters = [lambda x : 0] * self.num_levels
-        self.decode_updaters = [lambda x : 0] * self.num_levels
+        self.decode_inputers = [lambda x : 0] * self.state['num_systems']
+        self.decode_reseters = [lambda x : 0] * self.state['num_systems']
+        self.decode_updaters = [lambda x : 0] * self.state['num_systems']
         self.back_decode_inputers = [lambda x : 0] * self.num_levels
         self.back_decode_reseters = [lambda x : 0] * self.num_levels
         self.back_decode_updaters = [lambda x : 0] * self.num_levels
@@ -3069,7 +3069,7 @@ class Decoder_joint(EncoderDecoderBase):
                 learn_bias=False))
 
         if self.state['decoding_inputs']:
-            for level in range(self.num_levels):
+            for level in range(self.state['num_systems']):
                 # Input contributions
                 self.decode_inputers[level] = MultiLayer(
                     self.rng,
@@ -3320,7 +3320,7 @@ class Decoder_joint(EncoderDecoderBase):
                         else dict(init_state=init_states[level],
                             batch_size=y.shape[1] if y.ndim == 2 else 1,
                             nsteps=y.shape[0]))
-            if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multi':
+            if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multi' or self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multiseperate':
                 add_kwargs['clengths'] = clengths
             if self.state['search']:
                 print 'cb',c
