@@ -65,9 +65,11 @@ class BeamSearch(object):
         for i in xrange(self.num_systems):
             x[i][-1]=self.source_eos_id
         c = self.comp_repr(*x)#[0]
+        '''
         print len(c)
         for i in c:
             print i.shape
+        '''
         #print self.get_sample(1,5,1,*x)
         states = map(lambda x : x[None, :], self.comp_init_states(*c))
         #c = numpy.concatenate(c, axis=0)
