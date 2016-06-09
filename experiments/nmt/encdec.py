@@ -1992,6 +1992,7 @@ class RecurrentLayerWithSearch_multi(Layer):
         '''
         assert clengths
         assert len(clengths) == self.num_encoders
+        #assert not p_from_c
         csplit = []
         if c_mask:
             cmsplit = []
@@ -2012,6 +2013,9 @@ class RecurrentLayerWithSearch_multi(Layer):
             c_mask=cmsplit
         if p_from_c:
             p_from_c=pcsplit
+            pc = True
+        else:
+            pc = False
         '''
         csplit = []
         csplit.append(c[0:7])
@@ -2054,7 +2058,7 @@ class RecurrentLayerWithSearch_multi(Layer):
             p_from_h = ReplicateLayer(source_len)(utils.dot(state_before, B_hp)).out
 
         # Form projection to the tanh layer from the source annotation.
-            if not p_from_c:
+            if not pc:
                 p_from_c=utils.dot(c[i], A_cp[i]).reshape((source_len, source_num, dim))
                 p = p_from_h + p_from_c
             else:
