@@ -2016,7 +2016,7 @@ class RecurrentLayerWithSearch_multi(Layer):
             pc = True
         else:
             pc = False
-        assert not
+        assert not pc
         '''
         csplit = []
         csplit.append(c[0:7])
