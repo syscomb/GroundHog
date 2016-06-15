@@ -342,6 +342,9 @@ def main():
                 best = numpy.argmin(costs)
                 print >>ftrans, trans[best]
                 if args.alignment:
+                    print i
+                    print seq
+                    print trans[best]
                     print aligns[best]
                 total_cost += costs[best]
             except:
