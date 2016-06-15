@@ -814,6 +814,7 @@ class Decoder(EncoderDecoderBase):
     EVALUATION = 0
     SAMPLING = 1
     BEAM_SEARCH = 2
+    ALIGNMENT = 3
 
     def __init__(self, state, rng, prefix='dec',
             skip_init=False, compute_alignment=False):
@@ -2077,10 +2078,11 @@ class RecurrentLayerWithSearch_multi(Layer):
                 normalizer = energy[i].sum(axis=0)
             else:
                 normalizer += energy[i].sum(axis=0)
-
+        ps = []
         for i in xrange(self.num_encoders):
             # Get probabilities.
             probs = energy[i] / normalizer
+            ps.append(probs)
 
             # Calculate weighted sums of source annotations.
             # If target_num == 1, c shoulds broadcasted at the 1st dimension.
@@ -2089,6 +2091,7 @@ class RecurrentLayerWithSearch_multi(Layer):
                 ctx = (c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
             else:
                 ctx += (c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
+        probs = TT.concatenate(ps,axis=0)
 
         state_below += self.c_inputer(ctx).out
         reseter_below += self.c_reseter(ctx).out
@@ -2951,6 +2954,7 @@ class Decoder_joint(EncoderDecoderBase):
     EVALUATION = 0
     SAMPLING = 1
     BEAM_SEARCH = 2
+    ALIGNMENT = 3
 
     def __init__(self, state, rng, prefix='dec',
             skip_init=False, compute_alignment=False):
@@ -3458,6 +3462,8 @@ class Decoder_joint(EncoderDecoderBase):
                     mask=y_mask,
                     reg=None),
                     alignment)
+        elif mode == Decoder.ALIGNMENT:
+            return alignment
         else:
             raise Exception("Unknown mode for build_decoder")
 
@@ -3547,6 +3553,10 @@ class Decoder_joint(EncoderDecoderBase):
 
     def build_next_probs_predictor(self, c, step_num, y, init_states):
         return self.build_decoder(c, y, mode=Decoder.BEAM_SEARCH,
+                given_init_states=init_states, step_num=step_num)
+
+    def build_next_alignment_computer(self, c, step_num, y, init_states):
+        return self.build_decoder(c, y, mode=Decoder.ALIGNMENT,
                 given_init_states=init_states, step_num=step_num)
 
     def build_next_states_computer(self, c, step_num, y, init_states):
@@ -3853,6 +3863,15 @@ class SystemCombination(object):
                         self.c, self.step_num, self.gen_y, self.current_states),
                     name="next_states_fn")
         return self.next_states_fn
+
+    def create_next_alignment_computer(self):
+        if not hasattr(self, 'next_alignment_fn'):
+            self.next_alignment_fn = theano.function(
+                    inputs=[self.step_num, self.gen_y] + self.current_states+ self.c,
+                    outputs=self.decoder.build_next_alignment_computer(
+                        self.c, self.step_num, self.gen_y, self.current_states),
+                    name="next_alignment_fn")
+        return self.next_alignment_fn
 
 
     def create_probs_computer(self, return_alignment=False):

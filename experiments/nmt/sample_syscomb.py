@@ -49,10 +49,11 @@ class BeamSearch(object):
         self.comp_init_states = self.enc_dec.create_initializers()
         self.comp_next_probs = self.enc_dec.create_next_probs_computer()
         self.comp_next_states = self.enc_dec.create_next_states_computer()
+        self.comp_align = self.enc_dec.create_next_alignment_computer()
         self.get_sample = self.enc_dec.create_sampler()
         #self.get_test = self.enc_dec.sample_test()
 
-    def search(self, seq, n_samples, ignore_unk=False, minlen=1):
+    def search(self, seq, n_samples, ignore_unk=False, minlen=1, compute_alignment=False):
 
         x = []
         last_split = -1
@@ -79,9 +80,14 @@ class BeamSearch(object):
 
         fin_trans = []
         fin_costs = []
+        
 
         trans = [[]]
         costs = [0.0]
+
+        if compute_alignment:
+            fin_aligns = []
+            aligns = [[]]
 
         for k in range(3 * len(seq)):
             if n_samples == 0:
@@ -94,7 +100,11 @@ class BeamSearch(object):
                     if k > 0
                     else numpy.zeros(beam_size, dtype="int64"))
 
+            if compute_alignment:
+                align = self.comp_align(k, last_words, *(states+c))
             log_probs = numpy.log(self.comp_next_probs(k, last_words, *(states+c))[0])
+
+
             #print log_probs
 
             # Adjust log probs according to search restrictions
@@ -111,22 +121,31 @@ class BeamSearch(object):
                     flat_next_costs.flatten(),
                     n_samples)[:n_samples]
 
+            #print best_costs_indices
+
             # Decypher flatten indices
             voc_size = log_probs.shape[1]
             trans_indices = best_costs_indices / voc_size
             word_indices = best_costs_indices % voc_size
             costs = flat_next_costs[best_costs_indices]
 
+            #print trans_indices
+            #print word_indices
+
             # Form a beam for the next iteration
             new_trans = [[]] * n_samples
             new_costs = numpy.zeros(n_samples)
             new_states = [numpy.zeros((n_samples, dim), dtype="float32") for level
                     in range(num_levels)]
+            if compute_alignment:
+                new_aligns = [[]] * n_samples
             inputs = numpy.zeros(n_samples, dtype="int64")
             for i, (orig_idx, next_word, next_cost) in enumerate(
                     zip(trans_indices, word_indices, costs)):
                 new_trans[i] = trans[orig_idx] + [next_word]
                 new_costs[i] = next_cost
+                if compute_alignment:
+                    new_aligns[i] = aligns[orig_idx]+[align[:,orig_idx]]
                 for level in range(num_levels):
                     new_states[level][i] = states[level][orig_idx]
                 inputs[i] = next_word
@@ -135,16 +154,21 @@ class BeamSearch(object):
             # Filter the sequences that end with end-of-sequence character
             trans = []
             costs = []
+            aligns = []
             indices = []
             for i in range(n_samples):
                 if new_trans[i][-1] != self.enc_dec.state['null_sym_target']:
                     trans.append(new_trans[i])
                     costs.append(new_costs[i])
+                    if compute_alignment:
+                        aligns.append(new_aligns[i])
                     indices.append(i)
                 else:
                     n_samples -= 1
                     fin_trans.append(new_trans[i])
                     fin_costs.append(new_costs[i])
+                    if compute_alignment:
+                        fin_aligns.append(new_aligns[i])
             states = map(lambda x : x[indices], new_states)
 
 
@@ -160,8 +184,13 @@ class BeamSearch(object):
                 logger.error("Translation failed")
 
         fin_trans = numpy.array(fin_trans)[numpy.argsort(fin_costs)]
+        if compute_alignment:
+            fin_aligns = numpy.array(fin_aligns)[numpy.argsort(fin_costs)]
         fin_costs = numpy.array(sorted(fin_costs))
-        return fin_trans, fin_costs
+        if compute_alignment:
+            return fin_trans, fin_aligns, fin_costs
+        else:
+            return fin_trans, fin_costs
 
 def indices_to_words(i2w, seq):
     sen = []
@@ -174,11 +203,15 @@ def indices_to_words(i2w, seq):
 def sample(lm_model, seq, n_samples,
         sampler=None, beam_search=None,
         ignore_unk=False, normalize=False,
-        alpha=1, verbose=False):
+        alpha=1, verbose=False, compute_alignment=False):
     if beam_search:
         sentences = []
-        trans, costs = beam_search.search(seq, n_samples,
-                ignore_unk=ignore_unk, minlen=len(seq) / 8)
+        if compute_alignment:
+            trans, aligns, costs = beam_search.search(seq, n_samples,
+                ignore_unk=ignore_unk, minlen=len(seq) / 8, compute_alignment=compute_alignment)
+        else:
+            trans, costs = beam_search.search(seq, n_samples,
+                ignore_unk=ignore_unk, minlen=len(seq) / 8, compute_alignment=compute_alignment)
         if normalize:
             counts = [len(s) for s in trans]
             costs = [co / cn for co, cn in zip(costs, counts)]
@@ -188,7 +221,10 @@ def sample(lm_model, seq, n_samples,
         for i in range(len(costs)):
             if verbose:
                 print "{}: {}".format(costs[i], sentences[i])
-        return sentences, costs, trans
+        if compute_alignment:
+            return sentences, aligns, costs, trans
+        else:
+            return sentences, costs, trans
     elif sampler:
         sentences = []
         all_probs = []
@@ -231,6 +267,9 @@ def parse_args():
     parser.add_argument("--ignore-unk",
             default=False, action="store_true",
             help="Ignore unknown words")
+    parser.add_argument("--alignment",
+            default=False, action="store_true",
+            help="return alignment")
     parser.add_argument("--source",
             help="File of source sentences")
     parser.add_argument("--trans",
@@ -259,7 +298,7 @@ def main():
     logging.basicConfig(level=getattr(logging, state['level']), format="%(asctime)s: %(name)s: %(levelname)s: %(message)s")
 
     rng = numpy.random.RandomState(state['seed'])
-    enc_dec = SystemCombination(state, rng, skip_init=True)
+    enc_dec = SystemCombination(state, rng, skip_init=True, compute_alignment=args.alignment)
     enc_dec.build()
     lm_model = enc_dec.create_lm_model()
     lm_model.load(args.model_path)
@@ -293,11 +332,17 @@ def main():
             seq, parsed_in = parse_input(state, indx_word, seqin, idx2word=idict_src)
             if args.verbose:
                 print "Parsed Input:", parsed_in
-            trans, costs, _ = sample(lm_model, seq, n_samples, sampler=sampler,
-                    beam_search=beam_search, ignore_unk=args.ignore_unk, normalize=args.normalize)
+            if args.alignment:
+                trans, aligns, costs, _ = sample(lm_model, seq, n_samples, sampler=sampler,
+                    beam_search=beam_search, ignore_unk=args.ignore_unk, normalize=args.normalize, compute_alignment=args.alignment)
+            else:
+                trans, costs, _ = sample(lm_model, seq, n_samples, sampler=sampler,
+                    beam_search=beam_search, ignore_unk=args.ignore_unk, normalize=args.normalize, compute_alignment=args.alignment)
             try:
                 best = numpy.argmin(costs)
                 print >>ftrans, trans[best]
+                if args.alignment:
+                    print aligns[best]
                 total_cost += costs[best]
             except:
                 print >> ftrans, "FAIL"
