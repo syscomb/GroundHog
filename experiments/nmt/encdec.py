@@ -2524,6 +2524,10 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
             c_mask=cmsplit
         if p_from_c:
             p_from_c=pcsplit
+            pc = True
+        else:
+            pc = False
+        assert not pc
         '''
         csplit = []
         csplit.append(c[0:7])
@@ -2545,6 +2549,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
             print p_from_c, p_from_c[0].ndim
         '''
         
+        ps = []
         for i in xrange(self.num_encoders):
         # The code works only with 3D tensors
             cndim = c[i].ndim
@@ -2565,7 +2570,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
             p_from_h = ReplicateLayer(source_len)(utils.dot(state_before, B_hp)).out
 
         # Form projection to the tanh layer from the source annotation.
-            if not p_from_c:
+            if not pc:
                 p_from_c=utils.dot(c[i], A_cp[i]).reshape((source_len, source_num, dim))
                 p = p_from_h + p_from_c
             else:
@@ -2583,6 +2588,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
 
             # Get probabilities.
             probs = energy / normalizer
+            ps.append(probs)
 
             # Calculate weighted sums of source annotations.
             # If target_num == 1, c shoulds broadcasted at the 1st dimension.
@@ -2593,6 +2599,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
             reseter_below += self.c_reseters[i](ctx).out
             updater_below += self.c_updaters[i](ctx).out
 
+        probs = TT.concatenate(ps,axis=0)
         # Reset gate:
         # optionally reset the hidden state.
         reseter = self.reseter_activation(TT.dot(state_before, R_hh) +
@@ -2661,29 +2668,30 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
             else:
                 init_state = TT.alloc(floatX(0), self.n_hids)
 
-        
+        '''
         print 'c',c
         p_from_c =  utils.dot(c, self.A_cp[0]+self.A_cp[1]).reshape(
                 (c.shape[0], c.shape[1], self.n_hids))
+        '''
         
         #p_from_c = None
         assert clengths
         if mask:
             sequences = [state_below, mask, updater_below, reseter_below]
-            non_sequences = [c, c_mask, p_from_c]+clengths
+            non_sequences = [c, c_mask]+clengths
             #              seqs    | out |  non_seqs
-            fn = lambda x, m, g, r,   h,   c1, cm, pc ,*cl: self.step_fprop(x, h, mask=m,
+            fn = lambda x, m, g, r,   h,   c1, cm,*cl: self.step_fprop(x, h, mask=m,
                     gater_below=g, reseter_below=r,
-                    c=c1, p_from_c=pc, c_mask=cm,clengths=clengths,
+                    c=c1,  c_mask=cm,clengths=clengths,
                     use_noise=use_noise, no_noise_bias=no_noise_bias,
                     return_alignment=return_alignment)
         else:
             sequences = [state_below, updater_below, reseter_below]
-            non_sequences = [c, p_from_c]+clengths
+            non_sequences = [c]+clengths
             #            seqs   | out | non_seqs
-            fn = lambda x, g, r,   h,    c1, pc,*cl: self.step_fprop(x, h,
+            fn = lambda x, g, r,   h,    c1,*cl: self.step_fprop(x, h,
                     gater_below=g, reseter_below=r,
-                    c=c1, p_from_c=pc,clengths=clengths,
+                    c=c1, clengths=clengths,
                     use_noise=use_noise, no_noise_bias=no_noise_bias,
                     return_alignment=return_alignment)
         '''
