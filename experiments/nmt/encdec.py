@@ -2550,6 +2550,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         '''
         
         ps = []
+        ctxs = []
         for i in xrange(self.num_encoders):
         # The code works only with 3D tensors
             cndim = c[i].ndim
@@ -2593,13 +2594,16 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
             # Calculate weighted sums of source annotations.
             # If target_num == 1, c shoulds broadcasted at the 1st dimension.
             # Probabilities are broadcasted at the 2nd dimension.
-            ctx = (c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0)
+            ctxs.append((c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0))
 
-            state_below += self.c_inputers[i](ctx).out
-            reseter_below += self.c_reseters[i](ctx).out
-            updater_below += self.c_updaters[i](ctx).out
+            state_below += self.c_inputers[i](ctxs[i]).out
+            reseter_below += self.c_reseters[i](ctxs[i]).out
+            updater_below += self.c_updaters[i](ctxs[i]).out
 
+        
         probs = TT.concatenate(ps,axis=0)
+        ctx = TT.concatenate(ctxs,axis=1)
+
         # Reset gate:
         # optionally reset the hidden state.
         reseter = self.reseter_activation(TT.dot(state_before, R_hh) +
@@ -3139,9 +3143,12 @@ class Decoder_joint(EncoderDecoderBase):
                 activation='lambda x: x',
             ))
 
+        indim = self.state['c_dim'] 
+        if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multiseperate':
+            indim *= self.state['num_systems']
         self.repr_readout = MultiLayer(
                 self.rng,
-                n_in=self.state['c_dim'],
+                n_in=indim,
                 learn_bias=False,
                 name='{}_repr_readout'.format(self.prefix),
                 dropout=self.state['dropout_ff'],
