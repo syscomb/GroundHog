@@ -53,7 +53,7 @@ class BeamSearch(object):
         self.get_sample = self.enc_dec.create_sampler()
         #self.get_test = self.enc_dec.sample_test()
 
-    def search(self, seq, n_samples, ignore_unk=False, minlen=1, compute_alignment=False):
+    def search(self, seq, n_samples, ignore_unk=False, minlen=1, compute_alignment=False, have_source = False):
 
         x = []
         last_split = -1
@@ -84,6 +84,10 @@ class BeamSearch(object):
 
         trans = [[]]
         costs = [0.0]
+
+        if have_source:
+            minlen = (len(x[0])-1)/2
+            #print minlen
 
         if compute_alignment:
             fin_aligns = []
@@ -203,15 +207,15 @@ def indices_to_words(i2w, seq):
 def sample(lm_model, seq, n_samples,
         sampler=None, beam_search=None,
         ignore_unk=False, normalize=False,
-        alpha=1, verbose=False, compute_alignment=False):
+        alpha=1, verbose=False, compute_alignment=False, have_source=False):
     if beam_search:
         sentences = []
         if compute_alignment:
             trans, aligns, costs = beam_search.search(seq, n_samples,
-                ignore_unk=ignore_unk, minlen=len(seq) / 8, compute_alignment=compute_alignment)
+                ignore_unk=ignore_unk, minlen=len(seq) / 8, compute_alignment=compute_alignment, have_source = have_source)
         else:
             trans, costs = beam_search.search(seq, n_samples,
-                ignore_unk=ignore_unk, minlen=len(seq) / 8, compute_alignment=compute_alignment)
+                ignore_unk=ignore_unk, minlen=len(seq) / 8, compute_alignment=compute_alignment, have_source = have_source)
         if normalize:
             counts = [len(s) for s in trans]
             costs = [co / cn for co, cn in zip(costs, counts)]
@@ -270,6 +274,9 @@ def parse_args():
     parser.add_argument("--alignment",
             default=False, action="store_true",
             help="return alignment")
+    parser.add_argument("--havesource",
+            default=False, action="store_true",
+            help="minlen according to source")
     parser.add_argument("--source",
             help="File of source sentences")
     parser.add_argument("--trans",
@@ -334,10 +341,10 @@ def main():
                 print "Parsed Input:", parsed_in
             if args.alignment:
                 trans, aligns, costs, _ = sample(lm_model, seq, n_samples, sampler=sampler,
-                    beam_search=beam_search, ignore_unk=args.ignore_unk, normalize=args.normalize, compute_alignment=args.alignment)
+                    beam_search=beam_search, ignore_unk=args.ignore_unk, normalize=args.normalize, compute_alignment=args.alignment, have_source=args.havesource)
             else:
                 trans, costs, _ = sample(lm_model, seq, n_samples, sampler=sampler,
-                    beam_search=beam_search, ignore_unk=args.ignore_unk, normalize=args.normalize, compute_alignment=args.alignment)
+                    beam_search=beam_search, ignore_unk=args.ignore_unk, normalize=args.normalize, compute_alignment=args.alignment, have_source=args.havesource)
             try:
                 best = numpy.argmin(costs)
                 print >>ftrans, trans[best]
