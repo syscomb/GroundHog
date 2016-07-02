@@ -317,7 +317,8 @@ class CostLayer(Layer):
                   sum_over_time=None,
                   use_noise=True,
                   additional_inputs=None,
-                  no_noise_bias=False):
+                  no_noise_bias=False,
+                  b = None):
         """
         Computes the expression of the gradients of the cost with respect to
         all parameters of the model.
@@ -374,7 +375,8 @@ class CostLayer(Layer):
                              sum_over_time=sum_over_time,
                              use_noise=use_noise,
                              additional_inputs=additional_inputs,
-                             no_noise_bias=no_noise_bias)
+                             no_noise_bias=no_noise_bias,
+                             b = b)
         logger.debug("Get grads")
         grads = TT.grad(cost.mean(), self.params)
         logger.debug("Got grads")
@@ -1073,7 +1075,8 @@ class SoftmaxLayer(CostLayer):
                  sum_over_time=False,
                  no_noise_bias=False,
                  additional_inputs=None,
-                 use_noise=True):
+                 use_noise=True,
+                 b = None):
         """
         See parent class
         """
@@ -1149,7 +1152,19 @@ class SoftmaxLayer(CostLayer):
                                      state_below.shape[1]))
                 self.cost = cost.mean(1).sum()
             else:
-                self.cost = cost.sum()
+                if b:
+                    print 'b here'
+                    tmp = self.cost_per_sample
+                    tmp *= 0.005
+                    tmp -= tmp.min()
+                    tmp = TT.exp(-tmp)
+                    tmp /= tmp.sum()
+                    tmp *= b
+                    tmp = -tmp.sum()
+                    self.cost = tmp
+                else:
+                    print 'not b here'
+                    self.cost = cost.sum()
         else:
             self.cost = cost.mean()
         if scale:

@@ -7,6 +7,7 @@ import pprint
 
 import numpy
 
+from groundhog.trainer.SGD_mrt import SGD as SGD_mrt
 from groundhog.trainer.SGD_adadelta import SGD as SGD_adadelta
 from groundhog.trainer.SGD import SGD as SGD
 from groundhog.trainer.SGD_momentum import SGD as SGD_momentum
@@ -135,6 +136,7 @@ def main():
     else:
         enc_dec = RNNEncoderDecoder(state, rng, args.skip_init)
     enc_dec.build()
+    train_sampler = enc_dec.create_sampler(many_samples=True)
     lm_model = enc_dec.create_lm_model()
     print 'lm model inputs:', lm_model.inputs
 
@@ -145,8 +147,13 @@ def main():
     else:
         train_data = get_batch_iterator(state)
         sampler = RandomSamplePrinter(state, lm_model, train_data)
+    
     logger.debug("Compile trainer")
-    algo = eval(state['algo'])(lm_model, state, train_data)
+    if state['algo'] == 'SGD_mrt':
+        algo = eval(state['algo'])(lm_model, state, train_data, train_sampler)
+    else:
+        algo = eval(state['algo'])(lm_model, state, train_data)
+    
     logger.debug("Run training")
     main = MainLoop(train_data, None, None, lm_model, algo, state, None,
             reset=state['reset'],

@@ -3209,7 +3209,8 @@ class Decoder_joint(EncoderDecoderBase):
             step_num=None,
             mode=EVALUATION,
             given_init_states=None,
-            T=1):
+            T=1,
+            b = None):
         """Create the computational graph of the RNN Decoder.
 
         :param c:
@@ -3475,7 +3476,8 @@ class Decoder_joint(EncoderDecoderBase):
                     state_below=readout,
                     target=y,
                     mask=y_mask,
-                    reg=None),
+                    reg=None,
+                    b = b),
                     alignment)
         elif mode == Decoder.ALIGNMENT:
             return alignment
@@ -3628,6 +3630,11 @@ class SystemCombination(object):
         self.y = TT.lmatrix('y')
         self.y_mask = TT.matrix('y_mask')
         self.inputs += [self.y, self.y_mask]
+        if self.state['algo'] == 'SGD_mrt':
+            self.b = TT.vector('b')
+            self.inputs += [self.b]
+        else:
+            self.b = None
         print 'inputs:',self.inputs
 
         # Annotation for the log-likelihood computation
@@ -3721,7 +3728,7 @@ class SystemCombination(object):
         self.predictions, self.alignment = self.decoder.build_decoder(
                 c=all_c_components,#Concatenate(axis=0)(*all_c_components),
                 c_mask=self.x_mask,#Concatenate(axis=0)(*self.x_mask),
-                y=self.y, y_mask=self.y_mask)
+                y=self.y, y_mask=self.y_mask, b = self.b)
 
         # Annotation for sampling
         all_sampling_c_components = []
@@ -3824,19 +3831,32 @@ class SystemCombination(object):
         return self.init_fn
 
     def create_sampler(self, many_samples=False):
-        if hasattr(self, 'sample_fn'):
+        if self.state['algo'] == 'SGD_mrt':
+            logger.debug("Compile sampler,\t\tMany_samples:"+str(many_samples))
+            sample_fn = theano.function(
+                    inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
+                    outputs=[self.sample, self.sample_log_prob],
+                    updates=self.sampling_updates,
+                    name="sample_fn")
+            if not many_samples:
+                def sampler(*args):
+                    return map(lambda x : x.squeeze(), sample_fn(1, *args))
+                return sampler
+            return sample_fn
+        else:
+            if hasattr(self, 'sample_fn'):
+                return self.sample_fn
+            logger.debug("Compile sampler")
+            self.sample_fn = theano.function(
+                    inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
+                    outputs=[self.sample, self.sample_log_prob],
+                    updates=self.sampling_updates,
+                    name="sample_fn")
+            if not many_samples:
+                def sampler(*args):
+                    return map(lambda x : x.squeeze(), self.sample_fn(1, *args))
+                return sampler
             return self.sample_fn
-        logger.debug("Compile sampler")
-        self.sample_fn = theano.function(
-                inputs=[self.n_samples, self.n_steps, self.T]+self.sampling_x,
-                outputs=[self.sample, self.sample_log_prob],
-                updates=self.sampling_updates,
-                name="sample_fn")
-        if not many_samples:
-            def sampler(*args):
-                return map(lambda x : x.squeeze(), self.sample_fn(1, *args))
-            return sampler
-        return self.sample_fn
     '''
     def sample_test(self):
         self.test_fn = theano.function(
