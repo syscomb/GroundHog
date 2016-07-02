@@ -142,13 +142,6 @@ class SGD(object):
                 for p, g, gn2, dn2 in
                 zip(model.params, self.gs, self.gnorm2, self.dnorm2)]
 
-        ############################################################################
-        # add by He Wei
-        #new_grads = [(TT.sqrt(dn2 + eps) / TT.sqrt(gn2 + eps)) * g
-        #        for g, gn2, dn2 in
-        #        zip(self.gs, self.gnorm2, self.dnorm2)]
-        #self.export_grad_fn = theano.function([], new_grads, name='export_grad_function')
-        ############################################################################
 
         updates = zip(model.params, new_params)
         # d2
