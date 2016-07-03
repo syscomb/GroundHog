@@ -136,7 +136,8 @@ def main():
     else:
         enc_dec = RNNEncoderDecoder(state, rng, args.skip_init)
     enc_dec.build()
-    train_sampler = enc_dec.create_sampler(many_samples=True)
+    if state['algo'] == 'SGD_mrt':
+        train_sampler = enc_dec.create_sampler(many_samples=True)
     lm_model = enc_dec.create_lm_model()
     print 'lm model inputs:', lm_model.inputs
 
