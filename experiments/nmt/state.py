@@ -312,5 +312,6 @@ def prototype_syscomb_state():
     state['prefix'] = 'syscomb_'
     state['split_sym'] = -1
     state['same_encoder'] = False
+    state['mean'] = False
 
     return state

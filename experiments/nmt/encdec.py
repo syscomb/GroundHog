@@ -645,6 +645,8 @@ class EncoderDecoderBase(object):
             add_args = dict(c_dim=self.state['c_dim'])
         if rec_layer == RecurrentLayerWithSearch_multi or rec_layer == RecurrentLayerWithSearch_multiseperate:
             add_args = dict(c_dim=self.state['c_dim'], num_encoders = self.state['num_systems'])
+        if self.state['mean'] and rec_layer == RecurrentLayerWithSearch_multiseperate:
+            add_args['mean'] = True
         for level in range(self.num_levels):
             self.transitions.append(rec_layer(
                     self.rng,
@@ -2277,7 +2279,8 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
                  reseter_activation=TT.nnet.sigmoid,
                  weight_noise=False,
                  name=None,
-                 num_encoders=1):
+                 num_encoders=1,
+                 mean = False):
         logger.debug("RecurrentLayerWithSearch_multiseperate is used")
 
         self.grad_scale = 1
@@ -2308,6 +2311,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         self.reseter_activation = reseter_activation
         self.c_dim = c_dim
         self.num_encoders = num_encoders
+        self.mean = mean
 
         assert rng is not None, "random number generator should not be empty!"
 
@@ -2388,13 +2392,21 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
     '''
 
     def set_decoding_layers(self, c_inputers, c_reseters, c_updaters):
-        self.c_inputers = c_inputers
-        self.c_reseters = c_reseters
-        self.c_updaters = c_updaters
-        for layers in [c_inputers, c_reseters, c_updaters]:
-            for layer in layers:
+        if self.mean:
+            self.c_inputer = c_inputers
+            self.c_reseter = c_reseters
+            self.c_updater = c_updaters
+            for layer in [c_inputers, c_reseters, c_updaters]:
                 self.params += layer.params
                 self.params_grad_scale += layer.params_grad_scale
+        else:
+            self.c_inputers = c_inputers
+            self.c_reseters = c_reseters
+            self.c_updaters = c_updaters
+            for layers in [c_inputers, c_reseters, c_updaters]:
+                for layer in layers:
+                    self.params += layer.params
+                    self.params_grad_scale += layer.params_grad_scale
 
     def step_fprop(self,
                    state_below,
@@ -2596,13 +2608,25 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
             # Probabilities are broadcasted at the 2nd dimension.
             ctxs.append((c[i] * probs.dimshuffle(0, 1, 'x')).sum(axis=0))
 
-            state_below += self.c_inputers[i](ctxs[i]).out
-            reseter_below += self.c_reseters[i](ctxs[i]).out
-            updater_below += self.c_updaters[i](ctxs[i]).out
+            if self.mean:
+                state_below += self.c_inputer(ctxs[i]).out/self.num_encoders
+                reseter_below += self.c_reseter(ctxs[i]).out/self.num_encoders
+                updater_below += self.c_updater(ctxs[i]).out/self.num_encoders
+            else:
+                state_below += self.c_inputers[i](ctxs[i]).out
+                reseter_below += self.c_reseters[i](ctxs[i]).out
+                updater_below += self.c_updaters[i](ctxs[i]).out
 
         
         probs = TT.concatenate(ps,axis=0)
-        ctx = TT.concatenate(ctxs,axis=1)
+        if self.mean:
+            ctx = ctxs[0]
+            for i in range(1, self.num_encoders):
+                ctx += ctxs[i]
+            ctx /= self.num_encoders
+        else:
+            ctx = TT.concatenate(ctxs,axis=1)
+        
 
         # Reset gate:
         # optionally reset the hidden state.
@@ -2747,6 +2771,24 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         self.updates = updates
 
         return self.out
+
+class MeanLayer(Layer):
+    def __init__(self,
+                num_inputs
+                ):
+        self.num_inputs = num_inputs
+        super(MeanLayer, self).__init__()
+
+    def fprop(self, list_inputs, use_noise=True, no_noise_bias=False,
+            first_only = False):
+        result = list_inputs[0]
+        for i in range(1,self.num_inputs):
+            result += list_inputs[i] 
+        result /= self.num_inputs
+        self.out = result
+        return result
+
+
 
 class MultiInputLayer(Layer):
     """
@@ -3000,7 +3042,7 @@ class Decoder_joint(EncoderDecoderBase):
         self.create_init_layers()
 
         if self.state['search']:
-            if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multiseperate':
+            if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multiseperate' and not self.state['mean']:
                 self._create_decoding_layers_seperate()
                 assert self.num_levels == 1
                 self.transitions[0].set_decoding_layers(
@@ -3017,16 +3059,19 @@ class Decoder_joint(EncoderDecoderBase):
 
     def create_init_layers(self):
         logger.debug("create_init_layers")
-        self.initer = MultiInputLayer(
-                self.rng,
-                n_in = self.state['dim'],
-                n_hids = self.state['dim'] * self.state['hid_mult'],
-                activation = prefix_lookup(self.state, 'dec', 'activ'),
-                bias_scale = self.state['bias'],
-                name = '{}_initer_0'.format(self.prefix),
-                num_inputs = self.state['num_systems'],
-                dropout=self.state['dropout_ff'],
-                **self.default_kwargs)
+        if self.state['mean']:
+            self.initer = MeanLayer(num_inputs = self.state['num_systems'])
+        else:
+            self.initer = MultiInputLayer(
+                    self.rng,
+                    n_in = self.state['dim'],
+                    n_hids = self.state['dim'] * self.state['hid_mult'],
+                    activation = prefix_lookup(self.state, 'dec', 'activ'),
+                    bias_scale = self.state['bias'],
+                    name = '{}_initer_0'.format(self.prefix),
+                    num_inputs = self.state['num_systems'],
+                    dropout=self.state['dropout_ff'],
+                    **self.default_kwargs)
         '''
         for i in xrange(self.state['num_systems']):
             self.initers.append(MultiLayer(
@@ -3144,7 +3189,7 @@ class Decoder_joint(EncoderDecoderBase):
             ))
 
         indim = self.state['c_dim'] 
-        if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multiseperate':
+        if self.state['dec_rec_layer'] == 'RecurrentLayerWithSearch_multiseperate' and not self.state['mean']:
             indim *= self.state['num_systems']
         self.repr_readout = MultiLayer(
                 self.rng,
