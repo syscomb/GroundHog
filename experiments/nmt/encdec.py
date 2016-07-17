@@ -2774,10 +2774,12 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
 
 class MeanLayer(Layer):
     def __init__(self,
-                num_inputs
+                num_inputs,
+                weighted = False
                 ):
         self.num_inputs = num_inputs
         super(MeanLayer, self).__init__()
+
 
     def fprop(self, list_inputs, use_noise=True, no_noise_bias=False,
             first_only = False):
@@ -2811,6 +2813,7 @@ class MultiInputLayer(Layer):
                  learn_bias = True,
                  grad_scale = 1.,
                  name=None,
+                 mean=False,
                  num_inputs=1):
         """
         :type rng: numpy random generator
@@ -2938,6 +2941,7 @@ class MultiInputLayer(Layer):
         self.n_hids = n_hids
         self.learn_bias = learn_bias
         self.num_inputs = num_inputs
+        self.mean = mean
         self._init_params()
 
     def _init_params(self):
@@ -2947,29 +2951,43 @@ class MultiInputLayer(Layer):
         """
         self.W_ems = []
         self.b_ems = []
-        
-        for i in xrange(self.num_inputs):
+        if self.mean:
             W_em = self.init_fn[0](self.n_in,
-                                self.n_hids[0],
-                                self.sparsity[0],
-                                self.scale[0],
-                                self.rng)
+                                    self.n_hids[0],
+                                    self.sparsity[0],
+                                    self.scale[0],
+                                    self.rng)
             self.W_em = theano.shared(W_em,
-                                      name='W_'+str(i)+'_%s'%self.name)
-            self.W_ems += [self.W_em]
+                                    name='W_%s'%self.name)
+            self.b_em = theano.shared(
+                self.bias_fn[0](self.n_hids[0], self.bias_scale[0],self.rng),
+                name='b_%s'%self.name)
+            self.W_ems = [self.W_em]
+            self.b_ems = [self.b_em]
+            self.params = [x for x in self.W_ems]
+        else:
+            for i in xrange(self.num_inputs):
+                W_em = self.init_fn[0](self.n_in,
+                                    self.n_hids[0],
+                                    self.sparsity[0],
+                                    self.scale[0],
+                                    self.rng)
+                self.W_em = theano.shared(W_em,
+                                          name='W_'+str(i)+'_%s'%self.name)
+                self.W_ems += [self.W_em]
 
-        self.b_em = theano.shared(
-            self.bias_fn[0](self.n_hids[0], self.bias_scale[0],self.rng),
-            name='b_0_%s'%self.name)
-        self.b_ems = [self.b_em]
+            self.b_em = theano.shared(
+                self.bias_fn[0](self.n_hids[0], self.bias_scale[0],self.rng),
+                name='b_0_%s'%self.name)
+            self.b_ems = [self.b_em]
 
-        self.params = [x for x in self.W_ems]
+            self.params = [x for x in self.W_ems]
 
         if self.learn_bias and self.learn_bias!='last':
             self.params = [x for x in self.W_ems] + [x for x in self.b_ems]
         elif self.learn_bias == 'last':
             self.params = [x for x in self.W_ems] + [x for x in
-                                                     self.b_ems][:-1]
+                                                         self.b_ems][:-1]
         self.params_grad_scale = [self._grad_scale for x in self.params]
         if self.weight_noise:
             self.nW_ems = [theano.shared(x.get_value()*0, name='noise_'+x.name) for x in self.W_ems]
@@ -2987,21 +3005,31 @@ class MultiInputLayer(Layer):
         If the input is ints, we assume is an index, otherwise we assume is
         a set of floats.
         """
-        print 'multiinput layer use noise:', use_noise
-        result = TT.dot(list_inputs[0] ,self.W_ems[0])
-        for i in range(1,self.num_inputs):
-            result += TT.dot(list_inputs[i] ,self.W_ems[i])
-        result += self.b_ems[0]
-        state_value = self.activation[0](result)
-        if self.dropout < 1.:
-            if use_noise:
-                print 'training use noise'
-                state_value = state_value * self.trng.binomial(state_value.shape,n=1,p=self.dropout,dtype=state_value.dtype)
-            else:
-                print 'decoding not use noise'
-                state_value = state_value * self.dropout
-        self.out = state_value
-        return state_value
+        if self.mean:
+            result = list_inputs[0]
+            for i in range(1,self.num_inputs):
+                result += list_inputs[i] 
+            result /= self.num_inputs
+            result = TT.dot(result ,self.W_em)+self.b_em
+            result = self.activation[0](result)
+            self.out = result
+            return result
+        else:
+            print 'multiinput layer use noise:', use_noise
+            result = TT.dot(list_inputs[0] ,self.W_ems[0])
+            for i in range(1,self.num_inputs):
+                result += TT.dot(list_inputs[i] ,self.W_ems[i])
+            result += self.b_ems[0]
+            state_value = self.activation[0](result)
+            if self.dropout < 1.:
+                if use_noise:
+                    print 'training use noise'
+                    state_value = state_value * self.trng.binomial(state_value.shape,n=1,p=self.dropout,dtype=state_value.dtype)
+                else:
+                    print 'decoding not use noise'
+                    state_value = state_value * self.dropout
+            self.out = state_value
+            return state_value
 
 class Decoder_joint(EncoderDecoderBase):
 
@@ -3061,6 +3089,18 @@ class Decoder_joint(EncoderDecoderBase):
         logger.debug("create_init_layers")
         if self.state['mean']:
             self.initer = MeanLayer(num_inputs = self.state['num_systems'])
+            if self.state['weightedmean']:
+                self.initer = MultiInputLayer(
+                    self.rng,
+                    n_in = self.state['dim'],
+                    n_hids = self.state['dim'] * self.state['hid_mult'],
+                    activation = prefix_lookup(self.state, 'dec', 'activ'),
+                    bias_scale = self.state['bias'],
+                    name = '{}_initer_0'.format(self.prefix),
+                    num_inputs = self.state['num_systems'],
+                    dropout=self.state['dropout_ff'],
+                    mean = self.state['weightedmean'],
+                    **self.default_kwargs)
         else:
             self.initer = MultiInputLayer(
                     self.rng,
@@ -3071,6 +3111,7 @@ class Decoder_joint(EncoderDecoderBase):
                     name = '{}_initer_0'.format(self.prefix),
                     num_inputs = self.state['num_systems'],
                     dropout=self.state['dropout_ff'],
+                    mean = self.state['weightedmean'],
                     **self.default_kwargs)
         '''
         for i in xrange(self.state['num_systems']):

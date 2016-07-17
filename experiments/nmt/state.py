@@ -312,6 +312,8 @@ def prototype_syscomb_state():
     state['prefix'] = 'syscomb_'
     state['split_sym'] = -1
     state['same_encoder'] = False
+    # only one can be True
     state['mean'] = False
+    state['weightedmean'] = False
 
     return state
