@@ -2280,8 +2280,8 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
                  weight_noise=False,
                  name=None,
                  num_encoders=1,
-                 mean = False,
-                 dropout_encoder = None):
+                 mean = False
+                 ):
         logger.debug("RecurrentLayerWithSearch_multiseperate is used")
 
         self.grad_scale = 1
@@ -2313,7 +2313,6 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         self.c_dim = c_dim
         self.num_encoders = num_encoders
         self.mean = mean
-        self.dropout_encoder = dropout_encoder
 
         assert rng is not None, "random number generator should not be empty!"
 
@@ -2817,7 +2816,7 @@ class MultiInputLayer(Layer):
                  name=None,
                  mean=False,
                  num_inputs=1,
-                 dropout_encoder = None):
+                 ):
         """
         :type rng: numpy random generator
         :param rng: numpy random generator
@@ -2945,7 +2944,6 @@ class MultiInputLayer(Layer):
         self.learn_bias = learn_bias
         self.num_inputs = num_inputs
         self.mean = mean
-        self.dropout_encoder = dropout_encoder
         self._init_params()
 
     def _init_params(self):
@@ -3003,22 +3001,22 @@ class MultiInputLayer(Layer):
 
 
     def fprop(self, list_inputs, use_noise=True, no_noise_bias=False,
-            first_only = False):
+            first_only = False, dropout_encoder = None):
         """
         Constructs the computational graph of this layer.
         If the input is ints, we assume is an index, otherwise we assume is
         a set of floats.
         """
         if self.mean:
-            if self.dropout_encoder:
+            if dropout_encoder:
                 print '\nencoder-level dropout\n'
-                if sum(self.dropout_encoder) == 0:
+                if sum(dropout_encoder) == 0:
                     result = list_inputs[0]
                 else:
-                    result = list_inputs[0]*self.dropout_encoder[0]
+                    result = list_inputs[0]*dropout_encoder[0]
                     for i in range(1,self.num_inputs):
-                        result += list_inputs[i]*self.dropout_encoder[i]
-                    result /= sum(self.dropout_encoder)
+                        result += list_inputs[i]*dropout_encoder[i]
+                    result /= sum(dropout_encoder)
             else:
                 result = list_inputs[0]
                 for i in range(1,self.num_inputs):
@@ -3310,8 +3308,7 @@ class Decoder_joint(EncoderDecoderBase):
             mode=EVALUATION,
             given_init_states=None,
             T=1,
-            b = None,
-            dropout_encoder = None):
+            b = None):
         """Create the computational graph of the RNN Decoder.
 
         :param c:
@@ -3361,6 +3358,10 @@ class Decoder_joint(EncoderDecoderBase):
         #   (max_seq_len, batch_size, dim)
         # Shape if mode != evaluation
         #   (n_samples, dim)
+        if self.state['dropout_encoder'] != 1.:
+            dropout_encoder = self.trng.binomial((self.state['num_systems'],), p = self.state['dropout_encoder'])
+        else:
+            dropout_encoder = None
         '''
         if not self.state['search']:
             if mode == Decoder.EVALUATION:
@@ -3384,7 +3385,7 @@ class Decoder_joint(EncoderDecoderBase):
                 for i in xrange(self.state['num_systems']):
                     init_cs.append(c[i][0, :, -self.state['dim']:].out)
                 #init_states.append(init_c)
-                init_states.append(self.initer(init_cs))
+                init_states.append(self.initer(init_cs,dropout_encoder=dropout_encoder))
 
         #if mode == Decoder.SAMPLING:
         #    for i in xrange(self.state['num_systems']):
@@ -3739,10 +3740,7 @@ class SystemCombination(object):
             self.b = None
         print 'inputs:',self.inputs
 
-        if self.state['dropout_encoder'] != 1.:
-            dropout_encoder = self.trng.binomial((self.state['num_systems'],), p = self.state['dropout_encoder'])
-        else:
-            dropout_encoder = None
+        
 
         # Annotation for the log-likelihood computation
         all_c_components = []
