@@ -2624,7 +2624,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         if self.mean:
             if dropout_encoder:
                 print '\nencoder-level context dropout\n'
-                ctx = ctxs[0]*dropout_encoder[0]
+                ctx = ctxs[0]#*dropout_encoder[0]
                 for i in range(1, self.num_encoders):
                     ctx += ctxs[i]*dropout_encoder[i]
                 ctx /= dropout_encoder.sum()
@@ -3022,7 +3022,7 @@ class MultiInputLayer(Layer):
                 if dropout_encoder.sum() == 0:
                     result = list_inputs[0]
                 else:
-                    result = list_inputs[0]*dropout_encoder[0]
+                    result = list_inputs[0]#*dropout_encoder[0]
                     for i in range(1,self.num_inputs):
                         result += list_inputs[i]*dropout_encoder[i]
                     result /= dropout_encoder.sum()
