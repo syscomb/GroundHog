@@ -3057,6 +3057,7 @@ class Decoder_joint(EncoderDecoderBase):
         self.prefix = prefix
         self.skip_init = skip_init
         self.compute_alignment = compute_alignment
+        self.trng = RandomStreams(self.rng.randint(int(1e6)))
 
         # Actually there is a problem here -
         # we don't make difference between number of input layers
@@ -3718,7 +3719,6 @@ class SystemCombination(object):
         self.rng = rng
         self.skip_init = skip_init
         self.compute_alignment = compute_alignment
-        self.trng = RandomStreams(self.rng.randint(int(1e6)))
         print '\nSystem Combination\n'
 
     def build(self):
