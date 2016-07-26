@@ -3740,7 +3740,7 @@ class SystemCombination(object):
         print 'inputs:',self.inputs
 
         if self.state['dropout_encoder'] != 1.:
-            dropout_encoder = self.trng.binomial((self.state['num_systems']), p = self.state['dropout_encoder'])
+            dropout_encoder = self.trng.binomial((self.state['num_systems'],), p = self.state['dropout_encoder'])
         else:
             dropout_encoder = None
 
