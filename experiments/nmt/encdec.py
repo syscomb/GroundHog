@@ -3010,10 +3010,20 @@ class MultiInputLayer(Layer):
         a set of floats.
         """
         if self.mean:
-            result = list_inputs[0]
-            for i in range(1,self.num_inputs):
-                result += list_inputs[i] 
-            result /= self.num_inputs
+            if self.dropout_encoder:
+                print '\nencoder-level dropout\n'
+                if sum(self.dropout_encoder) == 0:
+                    result = list_inputs[0]
+                else:
+                    result = list_inputs[0]*self.dropout_encoder[0]
+                    for i in range(1,self.num_inputs):
+                        result += list_inputs[i]*self.dropout_encoder[i]
+                    result /= sum(self.dropout_encoder)
+            else:
+                result = list_inputs[0]
+                for i in range(1,self.num_inputs):
+                    result += list_inputs[i] 
+                result /= self.num_inputs
             result = TT.dot(result ,self.W_em)+self.b_em
             result = self.activation[0](result)
             self.out = result
@@ -3728,6 +3738,11 @@ class SystemCombination(object):
         else:
             self.b = None
         print 'inputs:',self.inputs
+
+        if self.state['dropout_encoder'] != 1.:
+            dropout_encoder = self.trng.binomial((self.state['num_systems']), p = self.state['dropout_encoder'])
+        else:
+            dropout_encoder = None
 
         # Annotation for the log-likelihood computation
         all_c_components = []
