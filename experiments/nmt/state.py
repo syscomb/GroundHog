@@ -315,5 +315,6 @@ def prototype_syscomb_state():
     # only one can be True
     state['mean'] = False
     state['weightedmean'] = False
+    state['dropout_encoder'] = 1.
 
     return state

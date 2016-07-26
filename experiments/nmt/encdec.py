@@ -2280,7 +2280,8 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
                  weight_noise=False,
                  name=None,
                  num_encoders=1,
-                 mean = False):
+                 mean = False,
+                 dropout_encoder = None):
         logger.debug("RecurrentLayerWithSearch_multiseperate is used")
 
         self.grad_scale = 1
@@ -2312,6 +2313,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         self.c_dim = c_dim
         self.num_encoders = num_encoders
         self.mean = mean
+        self.dropout_encoder = dropout_encoder
 
         assert rng is not None, "random number generator should not be empty!"
 
@@ -2814,7 +2816,8 @@ class MultiInputLayer(Layer):
                  grad_scale = 1.,
                  name=None,
                  mean=False,
-                 num_inputs=1):
+                 num_inputs=1,
+                 dropout_encoder = None):
         """
         :type rng: numpy random generator
         :param rng: numpy random generator
@@ -2942,6 +2945,7 @@ class MultiInputLayer(Layer):
         self.learn_bias = learn_bias
         self.num_inputs = num_inputs
         self.mean = mean
+        self.dropout_encoder = dropout_encoder
         self._init_params()
 
     def _init_params(self):
@@ -3296,7 +3300,8 @@ class Decoder_joint(EncoderDecoderBase):
             mode=EVALUATION,
             given_init_states=None,
             T=1,
-            b = None):
+            b = None,
+            dropout_encoder = None):
         """Create the computational graph of the RNN Decoder.
 
         :param c:
@@ -3702,6 +3707,7 @@ class SystemCombination(object):
         self.rng = rng
         self.skip_init = skip_init
         self.compute_alignment = compute_alignment
+        self.trng = RandomStreams(self.rng.randint(int(1e6)))
         print '\nSystem Combination\n'
 
     def build(self):
