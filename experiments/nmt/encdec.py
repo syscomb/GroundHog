@@ -2669,7 +2669,8 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
               use_noise=True,
               truncate_gradient=-1,
               no_noise_bias=False,
-              return_alignment=False):
+              return_alignment=False,
+              dropout_encoder = None):
 
         updater_below = gater_below
 
