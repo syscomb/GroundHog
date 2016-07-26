@@ -3362,7 +3362,7 @@ class Decoder_joint(EncoderDecoderBase):
         # Shape if mode != evaluation
         #   (n_samples, dim)
         if self.state['dropout_encoder'] != 1.:
-            dropout_encoder = self.trng.binomial((self.state['num_systems'],), n=1, p = self.state['dropout_encoder'], dtype=c[0].dtype)
+            dropout_encoder = self.trng.binomial((self.state['num_systems'],), n=1, p = self.state['dropout_encoder'], dtype=c[0].out.dtype)
         else:
             dropout_encoder = None
         '''
