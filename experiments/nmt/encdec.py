@@ -2423,7 +2423,8 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
                    use_noise=True,
                    no_noise_bias=False,
                    step_num=None,
-                   return_alignment=False):
+                   return_alignment=False,
+                   dropout_encoder=None):
         """
         Constructs the computational graph of this layer.
 
@@ -2708,20 +2709,20 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         assert clengths
         if mask:
             sequences = [state_below, mask, updater_below, reseter_below]
-            non_sequences = [c, c_mask]+clengths
+            non_sequences = [c, c_mask, dropout_encoder]+clengths
             #              seqs    | out |  non_seqs
-            fn = lambda x, m, g, r,   h,   c1, cm,*cl: self.step_fprop(x, h, mask=m,
+            fn = lambda x, m, g, r,   h,   c1, cm,de,*cl: self.step_fprop(x, h, mask=m,
                     gater_below=g, reseter_below=r,
-                    c=c1,  c_mask=cm,clengths=clengths,
+                    c=c1,  c_mask=cm,dropout_encoder=de,clengths=clengths,
                     use_noise=use_noise, no_noise_bias=no_noise_bias,
                     return_alignment=return_alignment)
         else:
             sequences = [state_below, updater_below, reseter_below]
-            non_sequences = [c]+clengths
+            non_sequences = [c, dropout_encoder]+clengths
             #            seqs   | out | non_seqs
-            fn = lambda x, g, r,   h,    c1,*cl: self.step_fprop(x, h,
+            fn = lambda x, g, r,   h,    c1,de,*cl: self.step_fprop(x, h,
                     gater_below=g, reseter_below=r,
-                    c=c1, clengths=clengths,
+                    c=c1, dropout_encoder=de,clengths=clengths,
                     use_noise=use_noise, no_noise_bias=no_noise_bias,
                     return_alignment=return_alignment)
         '''
@@ -3361,7 +3362,7 @@ class Decoder_joint(EncoderDecoderBase):
         # Shape if mode != evaluation
         #   (n_samples, dim)
         if self.state['dropout_encoder'] != 1.:
-            dropout_encoder = self.trng.binomial((self.state['num_systems'],), p = self.state['dropout_encoder'])
+            dropout_encoder = self.trng.binomial((self.state['num_systems'],), n=1, p = self.state['dropout_encoder'], dtype=c[0].dtype)
         else:
             dropout_encoder = None
         '''
