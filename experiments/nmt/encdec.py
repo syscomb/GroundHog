@@ -3022,7 +3022,7 @@ class MultiInputLayer(Layer):
                 result = list_inputs[0]*dropout_encoder[0]
                 for i in range(1,self.num_inputs):
                     result += list_inputs[i]*dropout_encoder[i]
-                desum = T.switch(T.eq(dropout_encoder.sum(), 0.), 1, dropout_encoder.sum())
+                desum = TT.switch(TT.eq(dropout_encoder.sum(), 0.), 1, dropout_encoder.sum())
                 result /= desum
             else:
                 result = list_inputs[0]
