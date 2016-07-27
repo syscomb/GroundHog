@@ -2622,7 +2622,7 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         
         probs = TT.concatenate(ps,axis=0)
         if self.mean:
-            if dropout_encoder:
+            if dropout_encoder and False:
                 print '\nencoder-level context dropout\n'
                 ctx = ctxs[0]#*dropout_encoder[0]
                 for i in range(1, self.num_encoders):
@@ -3019,13 +3019,11 @@ class MultiInputLayer(Layer):
         if self.mean:
             if dropout_encoder:
                 print '\nencoder-level hidden layer dropout\n'
-                if dropout_encoder.sum() == 0:
-                    result = list_inputs[0]
-                else:
-                    result = list_inputs[0]#*dropout_encoder[0]
-                    for i in range(1,self.num_inputs):
-                        result += list_inputs[i]*dropout_encoder[i]
-                    result /= dropout_encoder.sum()
+                dropout_encoder[0] = 1.
+                result = list_inputs[0]*dropout_encoder[0]
+                for i in range(1,self.num_inputs):
+                    result += list_inputs[i]*dropout_encoder[i]
+                result /= dropout_encoder.sum()
             else:
                 result = list_inputs[0]
                 for i in range(1,self.num_inputs):
