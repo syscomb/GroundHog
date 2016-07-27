@@ -330,7 +330,7 @@ class MainLoop(object):
                    numpy.isnan(rvals['cost'])) and\
                    self.state['on_nan'] == 'raise':
                     self.state['gotNaN'] = 1
-                    #self.save()
+                    self.save()
                     if self.channel:
                         self.channel.save()
                     print 'Got NaN while training'

@@ -2622,12 +2622,13 @@ class RecurrentLayerWithSearch_multiseperate(Layer):
         
         probs = TT.concatenate(ps,axis=0)
         if self.mean:
-            if dropout_encoder and False:
+            if dropout_encoder:
                 print '\nencoder-level context dropout\n'
-                ctx = ctxs[0]#*dropout_encoder[0]
+                ctx = ctxs[0]*dropout_encoder[0]
                 for i in range(1, self.num_encoders):
                     ctx += ctxs[i]*dropout_encoder[i]
-                ctx /= dropout_encoder.sum()
+                desum = TT.switch(TT.eq(dropout_encoder.sum(), 0.), 1, dropout_encoder.sum())
+                ctx /= desum
             else:
                 ctx = ctxs[0]
                 for i in range(1, self.num_encoders):
