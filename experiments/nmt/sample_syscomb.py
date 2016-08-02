@@ -88,12 +88,14 @@ class BeamSearch(object):
         if have_source:
             minlen = (len(x[0])-1)/2
             #print minlen
+        else:
+            minlen = (len(seq)-self.num_systems)/self.num_systems/2
 
         if compute_alignment:
             fin_aligns = []
             aligns = [[]]
 
-        for k in range(3 * len(seq)):
+        for k in range(6 * minlen):
             if n_samples == 0:
                 break
 
