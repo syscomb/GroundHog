@@ -3579,7 +3579,8 @@ class Decoder_joint(EncoderDecoderBase):
             self.output_layer.get_cost(
                     state_below=readout.out,
                     temp=T,
-                    target=sample)
+                    target=sample,
+                    alpha = self.state['alpha'])
             log_prob = self.output_layer.cost_per_sample
             return [sample] + [log_prob] + hidden_layers
         elif mode == Decoder.BEAM_SEARCH:

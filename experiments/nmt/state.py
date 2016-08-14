@@ -316,5 +316,6 @@ def prototype_syscomb_state():
     state['mean'] = False
     state['weightedmean'] = False
     state['dropout_encoder'] = 1.
+    state['alpha'] = 0.001
 
     return state

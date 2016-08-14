@@ -1076,7 +1076,8 @@ class SoftmaxLayer(CostLayer):
                  no_noise_bias=False,
                  additional_inputs=None,
                  use_noise=True,
-                 b = None):
+                 b = None,
+                 alpha = 0.005):
         """
         See parent class
         """
@@ -1154,8 +1155,9 @@ class SoftmaxLayer(CostLayer):
             else:
                 if b:
                     print 'b here'
+                    print 'alpha: '+str(alpha)
                     tmp = self.cost_per_sample
-                    tmp *= 0.005
+                    tmp *= alpha
                     tmp -= tmp.min()
                     tmp = TT.exp(-tmp)
                     tmp /= tmp.sum()
