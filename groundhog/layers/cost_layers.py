@@ -44,7 +44,8 @@ class CostLayer(Layer):
                  additional_inputs=None,
                  grad_scale=1.,
                  use_nce=False,
-                 name=None):
+                 name=None,
+                 alpha=0.001):
         """
         :type rng: numpy random generator
         :param rng: numpy random generator used to sample weights
@@ -145,6 +146,7 @@ class CostLayer(Layer):
         self.init_fn = init_fn
         self.additional_inputs = additional_inputs
         self.use_nce = use_nce
+        self.alpha = alpha
         self._init_params()
 
     def _init_params(self):
@@ -1076,8 +1078,7 @@ class SoftmaxLayer(CostLayer):
                  no_noise_bias=False,
                  additional_inputs=None,
                  use_noise=True,
-                 b = None,
-                 alpha = 0.005):
+                 b = None):
         """
         See parent class
         """
@@ -1155,9 +1156,9 @@ class SoftmaxLayer(CostLayer):
             else:
                 if b:
                     print 'b here'
-                    print 'alpha: '+str(alpha)
+                    print 'alpha: '+str(self.alpha)
                     tmp = self.cost_per_sample
-                    tmp *= alpha
+                    tmp *= self.alpha
                     tmp -= tmp.min()
                     tmp = TT.exp(-tmp)
                     tmp /= tmp.sum()

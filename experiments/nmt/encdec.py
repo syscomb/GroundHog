@@ -3298,6 +3298,7 @@ class Decoder_joint(EncoderDecoderBase):
                     rank_n_approx=self.state['rank_n_approx'],
                     name='{}_deep_softmax'.format(self.prefix),
                     use_nce=self.state['use_nce'] if 'use_nce' in self.state else False,
+                    alpha=self.state['alpha'],
                     **self.default_kwargs)
         else:
             self.output_nonlinearities = []
@@ -3310,6 +3311,7 @@ class Decoder_joint(EncoderDecoderBase):
                     name='dec_softmax',
                     sum_over_time=True,
                     use_nce=self.state['use_nce'] if 'use_nce' in self.state else False,
+                    alpha=self.state['alpha'],
                     **self.default_kwargs)
 
     def build_decoder(self, c, y,
@@ -3579,8 +3581,7 @@ class Decoder_joint(EncoderDecoderBase):
             self.output_layer.get_cost(
                     state_below=readout.out,
                     temp=T,
-                    target=sample,
-                    alpha = self.state['alpha'])
+                    target=sample)
             log_prob = self.output_layer.cost_per_sample
             return [sample] + [log_prob] + hidden_layers
         elif mode == Decoder.BEAM_SEARCH:
